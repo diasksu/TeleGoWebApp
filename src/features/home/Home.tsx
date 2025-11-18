@@ -18,7 +18,7 @@ export default function Home() {
     const navigate = useNavigate();
     const theme = useTheme();
 
-    const onClick = () => {
+    const onClick = () => {        
         navigate(useType.toLowerCase());
     }
 

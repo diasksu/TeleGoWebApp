@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+// import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom';
 import { TelegramWebApp } from '@kloktunov/react-telegram-webapp';
@@ -9,11 +9,11 @@ const root = createRoot(
 );
 
 root.render(
-  <StrictMode>
+  // <StrictMode>
     <HashRouter>
       <TelegramWebApp>
         <App />
       </TelegramWebApp>
     </HashRouter>
-  </StrictMode>
+  // </StrictMode>
 );

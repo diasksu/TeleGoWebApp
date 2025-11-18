@@ -22,7 +22,7 @@ export function TitleSegment(props: Readonly<TitleSegmentProps>) {
         backgroundColor: 'transparent',               
         flexGrow: 1 }}>
         <AirIcon style={{ margin: '5px' }} />
-        <Typography variant='h1'>Tele Go</Typography>
+        <Typography variant='h1'>Tele Go Pisechka</Typography>
         <br />
         <Typography style={{
             display: props.hideCaption ? 'none' : 'block',

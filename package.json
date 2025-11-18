@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "set HTTPS=true&&set PORT=443&&react-scripts start",
+    "start": "vite --host",
+    "local": "vite --host",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -18,16 +19,21 @@
     "@kloktunov/react-telegram-webapp": "^1.2.1",
     "@mui/material": "^7.3.2",
     "@mui/x-date-pickers": "^8.11.3",
+    "@react-google-maps/api": "^2.20.7",
+    "@react-spring/web": "^10.0.3",
     "@telegram-apps/bridge": "^2.11.0",
+    "@use-gesture/react": "^10.3.1",
     "axios": "^1.12.2",
     "dayjs": "^1.11.18",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-localization": "^1.0.19",
-    "react-router-dom": "^7.9.1"
+    "react-router-dom": "^7.9.1",
+    "react-spring-bottom-sheet": "^3.4.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@types/node": "^24.10.0",
     "@types/react": "^18.2.6",
     "@types/react-dom": "^18.2.4",
     "@vitejs/plugin-react": "^5.0.3",

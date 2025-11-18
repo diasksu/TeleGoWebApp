@@ -89,6 +89,18 @@ const CustomWebAppMainButton: FC<MainButtonProps> = ({
 		};
 	}, [webAppMainButton]);
 
+	useEffect(() => {
+		const restore = (event: { isStateStable: boolean }) => {
+			if (event.isStateStable) {
+				webAppMainButton?.show();
+			}	
+		};
+		webApp?.onEvent("viewportChanged", restore);
+		return () => {
+			webApp?.offEvent("viewportChanged", restore);
+		};
+	}, [webApp, webAppMainButton]);
+
     // If MainButton is not available, the component will not be rendered
 	if (!webAppMainButton || !webApp)
 	{ 

@@ -114,7 +114,7 @@ export function TakeMeCityDrawer(props: Readonly<TakeMeCityDrawerProps>) {
                     textAlign: 'center',
                     color: theme.palette.text.secondary
                 }}>
-                    {!notFound && locales.inputCityWelcomeText}
+                    {!notFound && locales.inputPlaceWelcomeText}
                     {notFound && locales.nothingFound}
             </Typography>}
         </Stack>

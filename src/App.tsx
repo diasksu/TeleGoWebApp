@@ -49,7 +49,7 @@ function createTakeMeTheme(
         },
       },
       typography: {
-        fontSize: 15,
+        fontSize: 14,
         fontFamily:
           'system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif, Inter, Avenir, Helvetica, Arial, sans-serif',
         button: {

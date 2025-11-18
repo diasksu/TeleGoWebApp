@@ -6,4 +6,11 @@ import svgr from 'vite-plugin-svgr';
 export default defineConfig({
   base: '/TeleGoWebApp/',
   plugins: [svgr(), react()],
+  server: {
+    https: {
+      key: 'C:\\utils\\diasksu.github.io+2-key.pem',
+      cert: 'C:\\utils\\diasksu.github.io+2.pem'
+    },
+    port: 443
+  }
 })

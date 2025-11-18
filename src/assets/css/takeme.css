@@ -38,6 +38,41 @@
 	--tg-section-bg-color: var(--tg-theme-section-bg-color, #17212b);
 }
 
+:root {
+	--rsbs-backdrop-bg: rgba(0, 0, 0, 0.6);
+	--rsbs-bg: #17212b;
+	/* --rsbs-bg: transparent; */
+	--rsbs-handle-bg: gray;
+	--rsbs-max-w: auto;
+	--rsbs-ml: env(safe-area-inset-left);
+	--rsbs-mr: env(safe-area-inset-right);
+	--rsbs-overlay-rounded: 0px !important;
+}
+
+@keyframes handle-bounce {
+  0%, 100% {
+    transform: translateY(-15);
+  }
+  50% {
+    transform: translateY(-25px);
+  }
+}
+
+[data-rsbs-header] {
+	padding: 0px !important;
+	transform: translateY(-20px);
+	animation: handle-bounce 1.5s ease-in-out infinite;
+}
+
 .take-logo g {
 	fill: var(--tg-color-bg-button);
+}
+
+.gm-style-cc {
+  	bottom: -20px !important;
+}
+
+.gm-style img[alt="Google"] {
+  	transform: translateY(-20px) translateX(-5px);
+	scale: calc(80%);
 }

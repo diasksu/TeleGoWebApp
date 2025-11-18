@@ -10,12 +10,13 @@ export const Layout: FC<LayoutProps> = ({ children }) => {
     return (
         <Container 
             sx={{
-                height: '100%',
-                padding: '7px',
+                height: '100vh', // фиксируем полную высоту окна
+                padding: '0px',
                 fontStyle: 'normal',
-                maxWidth: 'md'
+                maxWidth: 'md',
+                overflow: 'hidden', // не даем MUI вмешиваться
             }}>
-            <Box sx={{ height: '100%', justifyContent: 'center' }}>
+            <Box sx={{ height: '100%', justifyContent: 'center', touchAction: 'none', position: 'relative' }}>
                 {children}
             </Box>
         </Container>

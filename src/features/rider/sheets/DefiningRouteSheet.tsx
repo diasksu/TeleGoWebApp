@@ -7,13 +7,13 @@ import {
 import HailingIcon from "../../../assets/icons/HailingIcon";
 import FinishIcon from "../../../assets/icons/FinishIcon";
 import { TeleGoPointsDrawer } from "../../../common/components/TeleGoPointsDrawer";
-import type { TariffInfo } from "../types";
+import type { TariffState } from "../types";
 import SelectPlaceSegment from "../components/SelectPlaceSegment";
 import { WebAppBackButton } from "@kloktunov/react-telegram-webapp";
 import { useNavigate } from "react-router-dom";
 
 interface DefiningRouteSheetProps {
-    tariffInfo?: TariffInfo | null;
+    tariffState?: TariffState | null;
     map?: google.maps.Map | null;
     origin?: google.maps.places.PlaceResult;
     destination?: google.maps.places.PlaceResult;
@@ -24,7 +24,7 @@ interface DefiningRouteSheetProps {
 }
 
 export default function DefiningRouteSheet({ 
-    tariffInfo,
+    tariffState,
     map,
     origin,
     destination,
@@ -81,7 +81,12 @@ export default function DefiningRouteSheet({
             
         </Stack>
 
-        {tariffInfo && <Typography
+        {tariffState?.loading && (
+            <Typography sx={{ textAlign: 'center', padding: '15px', opacity: 0.8 }}>
+                Loading tariff ...
+            </Typography>
+        )}
+        {tariffState?.data && <Typography
             sx={{
                 fontSize: 20,
                 fontWeight: 'bold',
@@ -89,7 +94,7 @@ export default function DefiningRouteSheet({
                 padding: '15px',
                 backgroundColor: 'rgba(100,100,50,0.2)',
             }}>
-            {tariffInfo ? tariffInfo.formatted : '₺93,84'}
+            {tariffState?.data ? tariffState?.data.formatted : '₺93,84'}
         </Typography>}
 
         <TeleGoPointsDrawer

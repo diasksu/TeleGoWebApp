@@ -4,7 +4,7 @@ import {
     Stack } from '@mui/material';
 import '../../assets/css/takeme.css';
 import { useTelegramWebApp } from '@kloktunov/react-telegram-webapp';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BottomSheet } from 'react-spring-bottom-sheet';
 import 'react-spring-bottom-sheet/dist/style.css';
 import FinishIcon from '../../assets/icons/FinishIcon';
@@ -14,33 +14,40 @@ import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppM
 import { locales } from '../../common/localization/locales';
 import { toPlaceDto } from '../../common/utils/addressHelpers';
 import DefiningRouteSheet from './sheets/DefiningRouteSheet';
-import type { RideRequestRequest, RideRequestResponse, TariffInfo } from './types';
+import type { RideRequestRequest, RideRequestResponse } from './types';
 import RiderMap from './components/RiderMap';
 import { apiClient } from '../../api/backend';
 import { useApiErrorHandler } from '../../common/hooks/useApiErrorHandler';
 import DebugPanel from '../../common/components/DebugPanel';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
-import { tariffService } from './services/tariffService';
+import { useTariff } from './hooks/useTariff';
 
 export default function RiderPage() {
     const webApp = useTelegramWebApp();
 
-    const [map, setMap] = useState<google.maps.Map | null>(null);
-
     const [origin, setOrigin] = useState<google.maps.places.PlaceResult>();
     const [destination, setDestination] = useState<google.maps.places.PlaceResult>();
     const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
-
-    const [initialMarker, setInitialMarker] = useState<google.maps.Marker>();
-
     const [sheetMinHeight, setSheetMinHeight] = useState(0);
-
-    const [tariffInfo, setTariffInfo] = useState<TariffInfo | null>(null);
+    const [map, setMap] = useState<google.maps.Map | null>(null);
+    const { tariffState, calculateTariff } = useTariff();
 
     const navigate = useNavigate();
-    
-
     const handleApiError = useApiErrorHandler();
+
+    const handleRouteRendered = useCallback((
+        originPlace: google.maps.places.PlaceResult,
+        destinationPlace: google.maps.places.PlaceResult
+    ) => {
+        (async () => {
+            try {
+                await calculateTariff(originPlace, destinationPlace);
+            } catch (error) {
+                handleApiError(error, 'Could not get tariff info');
+            }
+        })();
+    }, [handleApiError]);
+   
     const onMainClick = async () => {
         const rideRequest: RideRequestRequest = {
             origin: toPlaceDto(origin!)!,
@@ -57,101 +64,32 @@ export default function RiderPage() {
         }
     }
 
-    useEffect(
-        () => {
-            webApp?.ready();
-            webApp?.expand();
-        }, 
-        [webApp]
-    );
-
-    const buildRoute = async (
-        originPlace: google.maps.places.PlaceResult,
-        destinationPlace: google.maps.places.PlaceResult,
-        directionsRenderer: google.maps.DirectionsRenderer
-    ) => {
-        const directionsService = new google.maps.DirectionsService();
-        return new Promise<void>((resolve, reject) => {
-            directionsService.route(
-                {
-                    origin: originPlace.geometry!.location!,
-                    destination: destinationPlace.geometry!.location!,
-                    travelMode: google.maps.TravelMode.DRIVING,
-                },
-                async (result, status) => {
-                    if (status === "OK" && result) {
-                        directionsRenderer.setDirections(result);
-                        try {
-                            const data = await tariffService.calculateTariff(originPlace, destinationPlace);
-                            setTariffInfo(data);
-                        } catch (error) {
-                            handleApiError(error, 'Could not get tariff info');
-                            setTariffInfo(null);
-                        }
-                        resolve();
-                    } else {
-                        console.error("Directions request failed:", status);
-                        reject(new Error(`Directions request failed: ${status}`));
-                    }
-                }
-            );
-        });
-    };
-
-    const clearInitialMarker = () => {
-        if (initialMarker) {
-            initialMarker.setMap(null);
-            setInitialMarker(undefined);
-        }
-    };
-
-    useEffect(() => {
-        if (!map || !origin?.geometry?.location || !destination?.geometry?.location) return;
-
-        clearInitialMarker();
-
-        const directionsRenderer = new google.maps.DirectionsRenderer({ map });
-
-        buildRoute(origin, destination, directionsRenderer)
-            .catch((error) => {
-                console.error("Failed to build route:", error);
-            });
-
-        return () => {
-            directionsRenderer.setMap(null);
-        };
-    }, [map, origin, destination, initialMarker, handleApiError]);
-
     const { getCurrentLocation } = useCurrentLocation();
 
     useEffect(() => {
-        (async () => {
-            const loc = await getCurrentLocation();
-            if (loc && map) {
-                    map.panTo(loc);
-                    if (initialMarker) {
-                        initialMarker.setMap(null);
-                    }
-                    const marker = new google.maps.Marker({ map, position: loc, label: "WE" });
-                    setInitialMarker(marker);
-                }
-                const place = await getPlaceFromCoords(loc!);
-                setOrigin(place!);
-            }
-        )();
-    }, [map, getCurrentLocation]);
+        const initializeApp = async () => {
+            webApp?.ready();
+            webApp?.expand();
+            const lm = window.Telegram?.WebApp?.LocationManager;
+            lm?.init();
 
-    useEffect(() => {
-        const lm = window.Telegram?.WebApp?.LocationManager;
-        lm?.init();
-    }, [map]);
+            const loc = await getCurrentLocation();
+            const place = await getPlaceFromCoords(loc!);
+            setOrigin(place!);
+        };
+        
+        initializeApp();
+    }, [webApp, getCurrentLocation]);
 
     return (
 
         <Stack sx={{ height: "100vh", position: "relative" }}>
             <RiderMap 
                 sheetMinHeight={sheetMinHeight}
-                setMap={setMap} />
+                onRouteRendered={() => handleRouteRendered(origin!, destination!)} 
+                origin={origin}
+                destination={destination} 
+                setMainMap={setMap}/>
             <BottomSheet
                 open={true}
                 expandOnContentDrag 
@@ -169,7 +107,7 @@ export default function RiderPage() {
                     destination={destination}
                     setOrigin={setOrigin}
                     setDestination={setDestination}
-                    tariffInfo={tariffInfo}
+                    tariffState={tariffState}
                     pointsDialogOpen={pointsDialogOpen}
                     setPointsDialogOpen={setPointsDialogOpen} />  
             </BottomSheet>

@@ -24,3 +24,18 @@ export interface TariffInfo {
     formatted: string;
     currency: string;
 }
+
+export interface TariffState {
+    loading: boolean;
+    data: TariffInfo | null;
+    error: string | null;
+}
+
+export enum RiderFlowStep {
+    DefiningRoute,
+    WaitingForDriver,
+    DriverAssigned,
+    DriverEnRoute,
+    RideInProgress,
+    RideCompleted
+}

@@ -21,10 +21,10 @@ import { getAddressOutput } from '../../common/utils/addressHelpers';
 export interface TeleGoPointsDrawerProps {
     open: boolean;
     setOpen: (open: boolean) => void;
-    map: google.maps.Map;
     origin?: google.maps.places.PlaceResult;
     destination?: google.maps.places.PlaceResult;
     handleClose: (origin: google.maps.places.PlaceResult, destination: google.maps.places.PlaceResult) => void;
+    map: google.maps.Map;
 }
 
 enum PlaceKind {

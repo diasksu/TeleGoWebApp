@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppMainButton';
 import { locales } from '../../common/localization/locales';
 import { getAddressOutput, toPlaceDto } from '../../common/utils/addressHelpers';
+import { env } from '../../env/config';
 
 const libraries: ("places" | "marker")[] = ["places", "marker"];
 
@@ -67,14 +68,16 @@ export default function RiderPage() {
             webApp?.MainButton.showProgress();
 
             const initData = webApp?.initData;
-            const response = await fetch(`https://localhost:52111/api/ride-request`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `tma ${initData}`,
-                },
-                body: JSON.stringify(rideRequest)
-            });
+            const response = await fetch(
+                env.getApiUrl('/api/ride-request'),
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `tma ${initData}`,
+                    },
+                    body: JSON.stringify(rideRequest)
+                });
 
             const result = await response.json();
             
@@ -133,7 +136,7 @@ export default function RiderPage() {
                         // https://ix5gkk15w7.execute-api.il-central-1.amazonaws.com/default
                         const initData = webApp?.initData;
                         const response = await fetch(
-                            "https://localhost:52111/api/tariff/calculate",
+                            env.getApiUrl('/api/tariff/calculate'),
                             {
                                 method: "POST",
                                 headers: { 
@@ -261,7 +264,7 @@ export default function RiderPage() {
 
         <Stack sx={{ height: "100vh", position: "relative" }}>
             <LoadScript
-                googleMapsApiKey="AIzaSyDeqs7L-oHz0FCPtzJswpzxdhqosiA95PM"
+                googleMapsApiKey={env.googleMapsApiKey}
                 libraries={libraries}>
                 <GoogleMap
                         mapContainerStyle={{ 

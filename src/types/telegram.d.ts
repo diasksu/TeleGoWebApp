@@ -1,6 +1,7 @@
 declare global {
   /** Telegram WebApp расширенный тип с LocationManager */
   interface TelegramWebApp {
+    initData?: string;
     LocationManager?: LocationManager;
   }
 

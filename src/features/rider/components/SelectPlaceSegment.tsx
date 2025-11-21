@@ -4,19 +4,19 @@ import { getAddressOutput } from "../../../common/utils/addressHelpers";
 interface SelectPlaceSegmentProps {
     place?: google.maps.places.PlaceResult;
     title: string;
-    setPointsDialogOpen: (open: boolean) => void;
     icon: JSX.Element;
+    onOpen: () => void;
 }
 
 export default function SelectPlaceSegment({
     place,
     title,
-    setPointsDialogOpen,
-    icon
+    icon,
+    onOpen
 }: SelectPlaceSegmentProps) {
     const placeAddress = getAddressOutput(place);
     return <Stack
-                onClick={() => setPointsDialogOpen(true)}
+                onClick={onOpen}
                 direction="row"
                 justifyContent="space-between"
                 spacing={1}

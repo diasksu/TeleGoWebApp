@@ -11,6 +11,7 @@ import type { TariffState } from "../types";
 import SelectPlaceSegment from "../components/SelectPlaceSegment";
 import { WebAppBackButton } from "@kloktunov/react-telegram-webapp";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 interface DefiningRouteSheetProps {
     tariffState?: TariffState | null;
@@ -36,6 +37,7 @@ export default function DefiningRouteSheet({
 {
     const theme = useTheme();
     const navigate = useNavigate();
+    const [activeField, setActiveField] = useState<'origin' | 'destination'>('origin');
 
     const handleDrawerClose = (origin: google.maps.places.PlaceResult, destination: google.maps.places.PlaceResult) => {
         setOrigin?.(origin);
@@ -48,6 +50,11 @@ export default function DefiningRouteSheet({
             return;
         }
         navigate(-1);
+    }
+
+    const onOpen = (field: 'origin' | 'destination') => {
+        setActiveField(field);
+        setPointsDialogOpen(true);
     }
 
     return <>
@@ -69,14 +76,14 @@ export default function DefiningRouteSheet({
                 <SelectPlaceSegment 
                     place={origin}
                     title="Select origin"
-                    setPointsDialogOpen={setPointsDialogOpen}
                     icon={<HailingIcon sx={{ fontSize: 24, color: '#e3e3e3' }}/>}
+                    onOpen={() => onOpen('origin')}
                 />
                 <SelectPlaceSegment 
                     place={destination}
                     title="Select destination"
-                    setPointsDialogOpen={setPointsDialogOpen}
                     icon={<FinishIcon sx={{ fontSize: 24, color: '#e3e3e3' }}/>}
+                    onOpen={() => onOpen('destination')}
                 />
             
         </Stack>
@@ -104,6 +111,7 @@ export default function DefiningRouteSheet({
             origin={origin}
             destination={destination}
             handleClose={handleDrawerClose}
+            activeField={activeField}
         />
 
         {pointsDialogOpen && 

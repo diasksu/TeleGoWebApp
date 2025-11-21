@@ -9,18 +9,18 @@ import { BottomSheet } from 'react-spring-bottom-sheet';
 import 'react-spring-bottom-sheet/dist/style.css';
 import FinishIcon from '../../assets/icons/FinishIcon';
 import { getPlaceFromCoords } from '../../api/googleMapsApi';
-import { useNavigate } from 'react-router-dom';
 import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppMainButton';
 import { locales } from '../../common/localization/locales';
 import { toPlaceDto } from '../../common/utils/addressHelpers';
 import DefiningRouteSheet from './sheets/DefiningRouteSheet';
-import type { RideRequestRequest, RideRequestResponse } from './types';
+import { RiderFlowStep, type RideRequestRequest, type RideRequestResponse } from './types';
 import RiderMap from './components/RiderMap';
 import { apiClient } from '../../api/backend';
 import { useApiErrorHandler } from '../../common/hooks/useApiErrorHandler';
 import DebugPanel from '../../common/components/DebugPanel';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useTariff } from './hooks/useTariff';
+import WaitingForDriverSheet from './sheets/WaitingForDriverSheet';
 
 export default function RiderPage() {
     const webApp = useTelegramWebApp();
@@ -31,8 +31,8 @@ export default function RiderPage() {
     const [sheetMinHeight, setSheetMinHeight] = useState(0);
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const { tariffState, calculateTariff } = useTariff();
+    const [flowStep, setFlowStep] = useState(RiderFlowStep.DefiningRoute);
 
-    const navigate = useNavigate();
     const handleApiError = useApiErrorHandler();
 
     const handleRouteRendered = useCallback((
@@ -47,39 +47,70 @@ export default function RiderPage() {
             }
         })();
     }, [handleApiError]);
+
+    const mainButtonCaption = () => {
+        if(flowStep == RiderFlowStep.DefiningRoute) {
+            return locales.riderButtonCaption;
+        } else if(flowStep == RiderFlowStep.WaitingForDriver) {
+            return locales.cancelRide;
+        }
+    }
    
     const onMainClick = async () => {
-        const rideRequest: RideRequestRequest = {
-            origin: toPlaceDto(origin!)!,
-            destination: toPlaceDto(destination!)!
-        };
-        try {
-            webApp?.MainButton.showProgress();
-            const result = await apiClient.post<RideRequestResponse>('/api/ride-request', rideRequest);
-            navigate("/waiting", { state: { rideRequestId: result.rideRequestId } });
-        } catch (error) {
-            handleApiError(error, 'Could not create ride request');
-        } finally {
-            webApp?.MainButton.hideProgress();
+        if(flowStep == RiderFlowStep.DefiningRoute) {
+            const rideRequest: RideRequestRequest = {
+                origin: toPlaceDto(origin!)!,
+                destination: toPlaceDto(destination!)!
+            };
+            try {
+                webApp?.MainButton.showProgress();
+                setFlowStep(RiderFlowStep.WaitingForDriver);
+                return;
+                await apiClient.post<RideRequestResponse>('/api/ride-request', rideRequest);
+            } catch (error) {
+                handleApiError(error, 'Could not create ride request');
+            } finally {
+                webApp?.MainButton.hideProgress();
+            }
+        }
+        else if(flowStep == RiderFlowStep.WaitingForDriver) {
+            webApp?.showAlert('Ride cancelled');
+            setFlowStep(RiderFlowStep.DefiningRoute);
         }
     }
 
     const { getCurrentLocation } = useCurrentLocation();
 
     useEffect(() => {
-        const initializeApp = async () => {
-            webApp?.ready();
-            webApp?.expand();
-            const lm = window.Telegram?.WebApp?.LocationManager;
-            lm?.init();
+        webApp?.ready();
+        webApp?.expand();
+        window.Telegram?.WebApp?.LocationManager?.init();
+    }, [webApp]);
 
-            const loc = await getCurrentLocation();
-            const place = await getPlaceFromCoords(loc!);
-            setOrigin(place!);
-        };
-        
-        initializeApp();
-    }, [webApp, getCurrentLocation]);
+   useEffect(() => {
+        if (!map) return;
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const loc = await getCurrentLocation();
+                if (cancelled || !loc) return;
+
+                if (!window.google?.maps?.Geocoder) {
+                    console.warn('Google Maps API not ready yet');
+                    return;
+                }
+
+                const place = await getPlaceFromCoords(loc);
+                if (!cancelled && place) setOrigin(place);
+            } 
+            catch (e) {
+                handleApiError(e, 'Не удалось определить стартовую точку');
+            }
+        })();
+
+        return () => { cancelled = true; };
+    }, [map, getCurrentLocation, handleApiError]);
 
     return (
 
@@ -101,7 +132,7 @@ export default function RiderPage() {
                     return [minHeight, 0.8 * maxHeight];
                 }}
                 defaultSnap={({ minHeight }) => minHeight }>
-                <DefiningRouteSheet
+                {flowStep == RiderFlowStep.DefiningRoute && <DefiningRouteSheet
                     map={map}
                     origin={origin}
                     destination={destination}
@@ -109,34 +140,16 @@ export default function RiderPage() {
                     setDestination={setDestination}
                     tariffState={tariffState}
                     pointsDialogOpen={pointsDialogOpen}
-                    setPointsDialogOpen={setPointsDialogOpen} />  
+                    setPointsDialogOpen={setPointsDialogOpen} />}
+                {flowStep == RiderFlowStep.WaitingForDriver && <WaitingForDriverSheet 
+                    some="" />}
             </BottomSheet>
-
-            <Box
-                sx={{
-                    position: 'absolute',
-                    bottom: sheetMinHeight + 20,       
-                    right: 20,         
-                    zIndex: 2
-                }}
-            >
-                <IconButton
-                    sx={{
-                        backgroundColor: 'rgba(0,0,0,0.4)',
-                        width: 40,
-                        height: 40,
-                        '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' }
-                    }}
-                    onClick={() => console.log('Finish clicked')}
-                    >
-                    <FinishIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
-                </IconButton>
-            </Box>
+            
 
             {!pointsDialogOpen && 
                 <CustomWebAppMainButton
                     disable={!(origin && destination)}
-                    text={locales.riderButtonCaption}
+                    text={mainButtonCaption()}
                     onClick={onMainClick} />
             }
 

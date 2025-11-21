@@ -25,6 +25,7 @@ export interface TeleGoPointsDrawerProps {
     destination?: google.maps.places.PlaceResult;
     handleClose: (origin: google.maps.places.PlaceResult, destination: google.maps.places.PlaceResult) => void;
     map: google.maps.Map;
+    activeField: 'origin' | 'destination';
 }
 
 enum PlaceKind {
@@ -158,6 +159,7 @@ export function TeleGoPointsDrawer(props: Readonly<TeleGoPointsDrawerProps>) {
                             value={originInput}
                             onChange={(e) => handleInput(e, PlaceKind.Origin, setOriginInput)}
                             autoComplete="off"
+                            autoFocus={props.activeField === 'origin'}
                             placeholder="Откуда поедете"
                             sx={{
                                 width: '100%',
@@ -178,6 +180,7 @@ export function TeleGoPointsDrawer(props: Readonly<TeleGoPointsDrawerProps>) {
                             value={destinationInput}
                             onChange={(e) => handleInput(e, PlaceKind.Destination, setDestinationInput)}
                             autoComplete="off"
+                            autoFocus={props.activeField === 'destination'}
                             placeholder="Куда поедете"
                             sx={{
                                 width: '100%',

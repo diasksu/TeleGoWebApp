@@ -64,6 +64,10 @@
 	animation: handle-bounce 1.5s ease-in-out infinite;
 }
 
+[data-rsbs-is-blocking='false'] [data-rsbs-overlay] {
+    box-shadow: 0 -14px 8px -10px rgba(0, 0, 0, 0.35) !important;
+}
+
 .take-logo g {
 	fill: var(--tg-color-bg-button);
 }

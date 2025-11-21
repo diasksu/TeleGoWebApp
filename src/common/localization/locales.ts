@@ -27,6 +27,7 @@ export const locales = new LocalizedStrings({
         commentLabel: 'Comment',
         commentSendPlaceholder: 'Enter your comment, courier will see it',
         commentDeliverPlaceholder: 'Enter your comment, sender will see it',
+        cancelRide: 'Cancel ride request'
     },
     ru: {
         datePickerLocaleText: ruRU,
@@ -51,5 +52,6 @@ export const locales = new LocalizedStrings({
         commentLabel: 'Комментарий',
         commentSendPlaceholder: 'Введите ваш комментарий. Его увидит курьер',
         commentDeliverPlaceholder: 'Введите ваш комментарий. Отправитель увидит его',
+        cancelRide: 'Отменить запрос на поездку'
     }
 });

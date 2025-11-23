@@ -37,13 +37,14 @@ export default function SelectPlaceSegment({
                     }}>
                     <Typography
                         sx={{
-                            
+                            maxWidth: "95%",
                         }}>
                         {placeAddress.shortName}
                     </Typography>
                     <Typography
                         sx={{
                             fontSize: 12,
+                            maxWidth: "95%",
                         }}>
                         {placeAddress.fullAddress}
                     </Typography>

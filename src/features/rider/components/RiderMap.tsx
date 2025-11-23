@@ -1,6 +1,10 @@
 import { GoogleMap, LoadScript } from "@react-google-maps/api";
 import { env } from '../../../env/config';
 import { useEffect, useState, useRef } from "react";
+import { Box, IconButton } from "@mui/material";
+import RouteIcon from "../../../assets/icons/RouteIcon";
+import { RiderFlowStep } from "../types";
+import HailingIcon from "../../../assets/icons/HailingIcon";
 
 interface RiderMapProps {
     sheetMinHeight: number; 
@@ -11,6 +15,7 @@ interface RiderMapProps {
         destination: google.maps.places.PlaceResult
     ) => void
     setMainMap?: (map: google.maps.Map) => void;
+    flowStep: RiderFlowStep;
 }
 
 const libraries: ("places" | "marker")[] = ["places", "marker"];
@@ -40,7 +45,8 @@ export default function RiderMap({
     onRouteRendered,
     origin,
     destination,
-    setMainMap
+    setMainMap,
+    flowStep
 }: RiderMapProps) {
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -108,6 +114,36 @@ export default function RiderMap({
         return () => renderer.setMap(null);
     }, [map, origin, destination]); // ВАЖНО: без onRouteRendered
 
+    const onMapButtonClick = () => { 
+        if (!map || !origin) return;
+
+        switch (flowStep) {
+            case RiderFlowStep.DefiningRoute: {
+                if (!destination) return;
+                const directions = directionsRendererRef.current?.getDirections();
+                const bounds = directions?.routes?.[0]?.bounds;
+                if (bounds) map.fitBounds(bounds);
+                break;
+            }
+
+            case RiderFlowStep.WaitingForDriver: {
+                const loc = origin.geometry?.location;
+                if (loc) {
+                    map.panTo(loc);
+                    map.setZoom(16);
+                }
+                break;
+            }
+
+            default:
+                break;
+        }
+    }
+
+    useEffect(() => {
+        onMapButtonClick();
+    }, [flowStep]);
+
     return <LoadScript
                 googleMapsApiKey={env.googleMapsApiKey}
                 libraries={libraries}>
@@ -131,5 +167,32 @@ export default function RiderMap({
                         }}
                     >
                 </GoogleMap>
+
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        bottom: sheetMinHeight + 20,       
+                        right: 20,         
+                        zIndex: 2
+                    }}
+                >
+                    <IconButton
+                        sx={{
+                            backgroundColor: 'rgba(0,0,0,0.4)',
+                            width: 40,
+                            height: 40,
+                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' }
+                        }}
+                        onClick={onMapButtonClick}
+                    >
+                        {flowStep === RiderFlowStep.DefiningRoute && (
+                            <RouteIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
+                        )}
+
+                        {flowStep === RiderFlowStep.WaitingForDriver && (
+                            <HailingIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
+                        )}
+                    </IconButton>
+                </Box>
             </LoadScript>;
 }

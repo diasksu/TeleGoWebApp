@@ -1,13 +1,9 @@
-import { 
-    Box,
-    IconButton,
-    Stack } from '@mui/material';
+import { Stack } from '@mui/material';
 import '../../assets/css/takeme.css';
 import { useTelegramWebApp } from '@kloktunov/react-telegram-webapp';
 import { useCallback, useEffect, useState } from 'react';
 import { BottomSheet } from 'react-spring-bottom-sheet';
 import 'react-spring-bottom-sheet/dist/style.css';
-import FinishIcon from '../../assets/icons/FinishIcon';
 import { getPlaceFromCoords } from '../../api/googleMapsApi';
 import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppMainButton';
 import { locales } from '../../common/localization/locales';
@@ -28,10 +24,11 @@ export default function RiderPage() {
     const [origin, setOrigin] = useState<google.maps.places.PlaceResult>();
     const [destination, setDestination] = useState<google.maps.places.PlaceResult>();
     const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
-    const [sheetMinHeight, setSheetMinHeight] = useState(0);
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const { tariffState, calculateTariff } = useTariff();
     const [flowStep, setFlowStep] = useState(RiderFlowStep.DefiningRoute);
+
+    const [snapPoints, setSnapPoints] = useState<number[]>([]);
 
     const handleApiError = useApiErrorHandler();
 
@@ -87,6 +84,13 @@ export default function RiderPage() {
         window.Telegram?.WebApp?.LocationManager?.init();
     }, [webApp]);
 
+    useEffect(() => {
+        async function createProfile() {
+            await apiClient.post<void>("/api/me/passenger");
+        }
+        createProfile();
+    }, []);
+
    useEffect(() => {
         if (!map) return;
         let cancelled = false;
@@ -116,20 +120,28 @@ export default function RiderPage() {
 
         <Stack sx={{ height: "100vh", position: "relative" }}>
             <RiderMap 
-                sheetMinHeight={sheetMinHeight}
+                sheetMinHeight={snapPoints?.length && snapPoints[0]}
                 onRouteRendered={() => handleRouteRendered(origin!, destination!)} 
                 origin={origin}
                 destination={destination} 
-                setMainMap={setMap}/>
+                setMainMap={setMap}
+                flowStep={flowStep}/>
             <BottomSheet
                 open={true}
                 expandOnContentDrag 
                 blocking={false}
+                scrollLocking={false}
                 snapPoints={({ minHeight, maxHeight }) => {
-                    if(minHeight !== sheetMinHeight) {
-                        setTimeout(() => setSheetMinHeight(minHeight), 0);
-                    }
-                    return [minHeight, 0.8 * maxHeight];
+                    const points = [minHeight, 0.8 * maxHeight];
+                    queueMicrotask(() => {
+                        setSnapPoints(prev => {
+                            if (!prev || prev[0] !== points[0] || prev[1] !== points[1]) {
+                                return points;
+                            }
+                            return prev;
+                        });
+                    });
+                    return points;
                 }}
                 defaultSnap={({ minHeight }) => minHeight }>
                 {flowStep == RiderFlowStep.DefiningRoute && <DefiningRouteSheet
@@ -142,9 +154,9 @@ export default function RiderPage() {
                     pointsDialogOpen={pointsDialogOpen}
                     setPointsDialogOpen={setPointsDialogOpen} />}
                 {flowStep == RiderFlowStep.WaitingForDriver && <WaitingForDriverSheet 
-                    some="" />}
+                    origin={origin}
+                    destination={destination} />}
             </BottomSheet>
-            
 
             {!pointsDialogOpen && 
                 <CustomWebAppMainButton

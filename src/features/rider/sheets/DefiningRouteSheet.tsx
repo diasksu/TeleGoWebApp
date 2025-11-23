@@ -1,5 +1,6 @@
 import { 
     Divider, 
+    IconButton, 
     Stack, 
     Typography, 
     useTheme 
@@ -89,20 +90,69 @@ export default function DefiningRouteSheet({
         </Stack>
 
         {tariffState?.loading && (
-            <Typography sx={{ textAlign: 'center', padding: '15px', opacity: 0.8 }}>
+            <Typography sx={{ 
+                textAlign: 'center', 
+                padding: '15px', 
+                borderTop: '1 px',
+                opacity: 0.8 }}>
                 Loading tariff ...
             </Typography>
         )}
-        {tariffState?.data && <Typography
-            sx={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                textAlign: "center",
-                padding: '15px',
-                backgroundColor: 'rgba(100,100,50,0.2)',
-            }}>
-            {tariffState?.data ? tariffState?.data.formatted : '₺93,84'}
-        </Typography>}
+        {tariffState?.data?.distance_km && (
+            <Typography
+                sx={{
+                    color: "#bbb",
+                    fontSize: "14px",
+                    textAlign: "center",
+                    borderTop: "1px solid #444",
+                    borderBottom: "1px solid #444",
+                    py: "6px",
+                }}
+            >
+                📏 {tariffState.data.distance_km.toFixed(1)} km • 🕒 {Math.round(tariffState.data.duration_min)} min
+            </Typography>
+        )}
+
+        {tariffState?.data?.formatted && (
+            <Stack
+                alignItems={"center"}
+                justifyContent="center"
+                direction="row">
+                <IconButton
+                    size="small"
+                    sx={{
+                        background: "#333",
+                        color: "#fff",
+                        "&:hover": { background: "#444" },
+                        width: 30,
+                        height: 30,
+                    }}
+                >
+                    -
+                </IconButton>
+                <Typography
+                    sx={{
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        textAlign: "center",
+                        padding: '15px'
+                    }}>
+                    {tariffState?.data ? tariffState?.data.formatted : ''}
+                </Typography>
+                <IconButton
+                    size="small"
+                    sx={{
+                        background: "#333",
+                        color: "#fff",
+                        "&:hover": { background: "#444" },
+                        width: 30,
+                        height: 30,
+                    }}
+                >
+                    +
+                </IconButton>
+            </Stack>
+        )}
 
         <TeleGoPointsDrawer
             open={pointsDialogOpen}

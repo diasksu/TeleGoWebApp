@@ -1,23 +1,30 @@
-import { Typography } from "@mui/material";
+import { Stack, Typography } from "@mui/material";
+import { getAddressOutput } from "../../../common/utils/addressHelpers";
 
 interface WaitingForDriverSheetProps {
-     some: string
+    origin?: google.maps.places.PlaceResult;
+    destination?: google.maps.places.PlaceResult;
 }
 
 export default function WaitingForDriverSheet({ 
-   some
+    origin,
+    destination
 }: WaitingForDriverSheetProps) 
 {
-    return <>
+    const originAddress = getAddressOutput(origin);
+    const destinationAddress = getAddressOutput(destination);
+    console.log(originAddress.shortName);
+    console.log(destinationAddress.shortName);
+
+    return <Stack>
         <Typography
             sx={{
                 fontSize: 20,
                 fontWeight: 'bold',
                 textAlign: "center",
                 padding: '15px',
-                backgroundColor: 'rgba(100,100,50,0.2)',
             }}>
-            Waiting for driver to accept your ride... {some}
+            Looking for a driver...
         </Typography>
-    </>
+    </Stack>
 }

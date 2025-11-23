@@ -23,6 +23,8 @@ export interface TariffInfo {
     amount: number;
     formatted: string;
     currency: string;
+    distance_km: number;
+    duration_min: number;
 }
 
 export interface TariffState {

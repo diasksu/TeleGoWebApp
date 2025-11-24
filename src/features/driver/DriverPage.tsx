@@ -15,6 +15,8 @@ import { useApiErrorHandler } from '../../common/hooks/useApiErrorHandler';
 import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppMainButton';
 import { locales } from '../../common/localization/locales';
 import { apiClient } from '../../api/backend';
+import { useTracking } from '../../common/hooks/useTracking';
+import { DriverFlowStep } from './types';
 
 const libraries: ("places" | "marker")[] = ["places", "marker"];
 
@@ -42,7 +44,9 @@ export default function DriverPage() {
     const [initialMarker, setInitialMarker] = useState<google.maps.Marker | null>(null);
 
     const { getCurrentLocation } = useCurrentLocation();
+    const { startTracking, stopTracking } = useTracking();
     const handleApiError = useApiErrorHandler();
+    const [flowStep, setFlowStep] = useState(DriverFlowStep.Offline);
 
     useEffect(() => {
         webApp?.ready();
@@ -99,9 +103,52 @@ export default function DriverPage() {
     }, [map, currentLocation]);
 
     const onMainClick = async () => {
-        webApp?.showAlert('Вы на линии');
+        switch(flowStep) {
+            case DriverFlowStep.Offline:
+                webApp?.showAlert('Вы на линии');
+                await goOnline();
+                setFlowStep(DriverFlowStep.Online);
+            break;
+            case DriverFlowStep.Online:
+                webApp?.showAlert('Вы оффлайн');
+                await goOffline();
+                setFlowStep(DriverFlowStep.Offline);
+            break;
+        }
     }
 
+    const goOnline = async () => {
+        const loc = await getCurrentLocation();
+        if(!loc) {
+            webApp?.showAlert('Could not get current location');
+            return;
+        }
+        await sendState(loc);
+        startTracking(sendState, 5000); 
+    }
+
+    const sendState = async (pos: google.maps.LatLngLiteral) => {
+        await apiClient.post("/api/me/driver/state", {
+            status: "ONLINE_ACTIVE",
+            latitude: pos.lat,
+            longitude: pos.lng
+        });
+    };
+
+    const goOffline = () => {
+        stopTracking();
+        apiClient.post("/api/me/driver/state", { status: "OFFLINE" });
+    };
+
+    const mainButtonCaption = () => {
+        switch(flowStep) {
+            case DriverFlowStep.Offline:
+                return locales.driverGoOnline;
+            case DriverFlowStep.Online:
+                return locales.driverGoOffline;
+        }
+    }
+    
     return <Stack>
         <LoadScript
             googleMapsApiKey={env.googleMapsApiKey}
@@ -169,7 +216,7 @@ export default function DriverPage() {
         </BottomSheet>
         <CustomWebAppMainButton
             disable={!currentLocation}
-            text={locales.driverGoOnline}
+            text={mainButtonCaption()}
             onClick={onMainClick} />
     </Stack>
 }

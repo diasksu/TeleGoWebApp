@@ -1,4 +1,4 @@
-import { Stack, Typography } from "@mui/material";
+import { LinearProgress, Stack, Typography } from "@mui/material";
 import { getAddressOutput } from "../../../common/utils/addressHelpers";
 
 interface WaitingForDriverSheetProps {
@@ -26,5 +26,11 @@ export default function WaitingForDriverSheet({
             }}>
             Looking for a driver...
         </Typography>
+        <LinearProgress
+            sx={{
+                '& .MuiLinearProgress-bar': {
+                    animationDuration: '4s', // по умолчанию ~2s
+                },
+            }} />
     </Stack>
 }

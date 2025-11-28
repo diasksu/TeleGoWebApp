@@ -17,6 +17,7 @@ import DebugPanel from '../../common/components/DebugPanel';
 import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useTariff } from './hooks/useTariff';
 import WaitingForDriverSheet from './sheets/WaitingForDriverSheet';
+import { useFakeDrivers } from './hooks/useFakeDrivers';
 
 export default function RiderPage() {
     const webApp = useTelegramWebApp();
@@ -31,6 +32,23 @@ export default function RiderPage() {
     const [snapPoints, setSnapPoints] = useState<number[]>([]);
 
     const handleApiError = useApiErrorHandler();
+
+    // useFakeDrivers(flowStep === RiderFlowStep.WaitingForDriver, origin?.geometry?.location, map);
+    useFakeDrivers(
+        flowStep === RiderFlowStep.WaitingForDriver, 
+        {
+            maxCars: 2,
+            fadeInMs: 1000,
+            fadeOutMs: 1000,
+            minSpeedKmh: 20,
+            maxSpeedKmh: 60,
+            minLifeMs: 4000,
+            maxLifeMs: 9000,
+            spawnIntervalMs: 4000,
+            routeRadiusMeters: 300
+        },
+        origin?.geometry?.location, 
+        map);
 
     const handleRouteRendered = useCallback((
         originPlace: google.maps.places.PlaceResult,
@@ -62,7 +80,6 @@ export default function RiderPage() {
             try {
                 webApp?.MainButton.showProgress();
                 setFlowStep(RiderFlowStep.WaitingForDriver);
-                return;
                 await apiClient.post<RideRequestResponse>('/api/ride-request', rideRequest);
             } catch (error) {
                 handleApiError(error, 'Could not create ride request');

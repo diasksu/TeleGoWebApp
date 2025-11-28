@@ -1,12 +1,15 @@
 import { 
     Box,
+    Button,
     IconButton,
-    Stack, 
+    LinearProgress,
+    Stack,
+    Typography, 
 } from '@mui/material';
 import '../../assets/css/takeme.css';
 import { useTelegramWebApp } from '@kloktunov/react-telegram-webapp';
 import { GoogleMap, LoadScript } from '@react-google-maps/api';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import RouteIcon from '../../assets/icons/RouteIcon';
 import { BottomSheet } from 'react-spring-bottom-sheet';
 import { env } from '../../env/config';
@@ -16,7 +19,7 @@ import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppM
 import { locales } from '../../common/localization/locales';
 import { apiClient } from '../../api/backend';
 import { useTracking } from '../../common/hooks/useTracking';
-import { DriverFlowStep } from './types';
+import { DriverFlowStep, type DriverOfferFullDto } from './types';
 
 const libraries: ("places" | "marker")[] = ["places", "marker"];
 
@@ -42,6 +45,9 @@ export default function DriverPage() {
     const sheetMinHeight = snapPoints?.length && snapPoints[0];
     const [currentLocation, setCurrentLocation] = useState<google.maps.LatLngLiteral | null>(null);
     const [initialMarker, setInitialMarker] = useState<google.maps.Marker | null>(null);
+    const [offer, setOffer] = useState<DriverOfferFullDto | null>(null);
+    const rideRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+    const pickupRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
 
     const { getCurrentLocation } = useCurrentLocation();
     const { startTracking, stopTracking } = useTracking();
@@ -62,31 +68,32 @@ export default function DriverPage() {
     }, []);
 
     useEffect(() => {
-            if (!map) return;
-            let cancelled = false;
-    
-            (async () => {
-                try {
-                    const loc = await getCurrentLocation();
-                    if (cancelled || !loc) return;
-                    if (!window.google?.maps?.Geocoder) {
-                        console.warn('Google Maps API not ready yet');
-                        return;
-                    }
-                    setCurrentLocation(loc);
-                } 
-                catch (e) {
-                    handleApiError(e, 'Не удалось определить стартовую точку');
+        if (!map) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const loc = await getCurrentLocation();
+                if (cancelled || !loc) return;
+                if (!window.google?.maps?.Geocoder) {
+                    console.warn('Google Maps API not ready yet');
+                    return;
                 }
-            })();
-    
-            return () => { cancelled = true; };
-        }, [map, getCurrentLocation, handleApiError]);
+                setCurrentLocation(loc);
+            } 
+            catch (e) {
+                handleApiError(e, 'Не удалось определить стартовую точку');
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [map, getCurrentLocation, handleApiError]);
 
     useEffect(() => {
         if (!map) return;
         if (currentLocation) {
-            map.panTo(currentLocation);
+            if(flowStep == DriverFlowStep.Online || flowStep == DriverFlowStep.Offline) {
+                map.panTo(currentLocation);
+                map.setZoom(16);
+            }
             if (!initialMarker) {
                 const marker = new google.maps.Marker({ map, position: currentLocation, label: 'ME' });
                 setInitialMarker(marker);
@@ -100,17 +107,119 @@ export default function DriverPage() {
                 setInitialMarker(null);
             }
         }
-    }, [map, currentLocation]);
+    }, [map, currentLocation, flowStep]);
+
+    useEffect(() => {
+        if (flowStep !== DriverFlowStep.GoingToPickup) {
+            if (pickupRendererRef.current) {
+                pickupRendererRef.current.setMap(null);
+                pickupRendererRef.current = null;
+            }
+            return;
+        } 
+        if (!offer) return;
+        if (!map) return;
+        if (!currentLocation) return;
+        const destination = {
+            lat: offer.origin.latitude,
+            lng: offer.origin.longitude
+        };
+        if (pickupRendererRef.current) {
+            pickupRendererRef.current.setMap(null);
+            pickupRendererRef.current = null;
+        }
+        const renderer = new google.maps.DirectionsRenderer({ 
+                map, 
+                suppressMarkers: true,
+                polylineOptions: {
+                    strokeColor: "#00C853",    
+                    strokeWeight: 6,   
+                    strokeOpacity: 0.5               
+                }
+            });
+        pickupRendererRef.current = renderer;
+        const svc = new google.maps.DirectionsService();
+        svc.route(
+            {
+                origin: currentLocation,
+                destination,
+                travelMode: google.maps.TravelMode.DRIVING
+            },
+            (result, status) => {
+                if (status === 'OK' && result) {
+                    renderer.setDirections(result);
+                } else {
+                    console.error('Directions request failed:', status);
+                }
+            }
+        );
+        return () => renderer.setMap(null);
+    }, [flowStep]);
+
+    useEffect(() => {
+        if (flowStep !== DriverFlowStep.Online) return;
+        let cancelled = false;
+        const interval = setInterval(async () => {
+            try {
+                const data = await apiClient.get<DriverOfferFullDto>(
+                    "/api/me/driver/offers"
+                );
+                if (!cancelled && data) {
+                    setOffer(data);
+                    setFlowStep(DriverFlowStep.OrderPreview);
+                }
+            } catch (e) {
+                console.warn("Offer polling error", e);
+            }
+        }, 3000);
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [flowStep]);
+
+    useEffect(() => {
+        if (!offer) return;
+        if (!map) return;
+        const origin = {
+            lat: offer.origin.latitude,
+            lng: offer.origin.longitude
+        };
+        const destination = {
+            lat: offer.destination.latitude,
+            lng: offer.destination.longitude
+        };
+        if (rideRendererRef.current) {
+            rideRendererRef.current.setMap(null);
+            rideRendererRef.current = null;
+        }
+        const renderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: true });
+        rideRendererRef.current = renderer;
+        const svc = new google.maps.DirectionsService();
+        svc.route(
+            {
+                origin,
+                destination,
+                travelMode: google.maps.TravelMode.DRIVING
+            },
+            (result, status) => {
+                if (status === 'OK' && result) {
+                    renderer.setDirections(result);
+                } else {
+                    console.error('Directions request failed:', status);
+                }
+            }
+        );
+        return () => renderer.setMap(null);
+    }, [offer, map])
 
     const onMainClick = async () => {
         switch(flowStep) {
             case DriverFlowStep.Offline:
-                webApp?.showAlert('Вы на линии');
                 await goOnline();
                 setFlowStep(DriverFlowStep.Online);
             break;
             case DriverFlowStep.Online:
-                webApp?.showAlert('Вы оффлайн');
                 await goOffline();
                 setFlowStep(DriverFlowStep.Offline);
             break;
@@ -146,9 +255,34 @@ export default function DriverPage() {
                 return locales.driverGoOnline;
             case DriverFlowStep.Online:
                 return locales.driverGoOffline;
+            case DriverFlowStep.OrderPreview:
+                return locales.driverAccept
         }
     }
     
+    const declineOffer = async () => {
+        await apiClient.post(
+            `/api/me/driver/offers/${offer?.offer_id}`,
+            { status: 2 }  // Declined
+        );
+        setOffer(null);
+        setFlowStep(DriverFlowStep.Online);
+    }
+
+    const acceptOffer = async () => {
+        try {
+            await apiClient.post<string | null>(
+                `/api/me/driver/offers/${offer?.offer_id}`,
+                { status: 1 }
+            );
+            // всё ок
+            setFlowStep(DriverFlowStep.GoingToPickup);
+        }
+        catch (e) {
+            handleApiError(e, 'Не удалось принять заказ');
+        }
+    }
+ 
     return <Stack>
         <LoadScript
             googleMapsApiKey={env.googleMapsApiKey}
@@ -212,11 +346,83 @@ export default function DriverPage() {
                 return points;
             }}
             defaultSnap={({ minHeight }) => minHeight }>
-                <></>
+            {flowStep == DriverFlowStep.Online && <Stack>
+                <Typography
+                    sx={{
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        textAlign: "center",
+                        padding: '15px',
+                    }}>
+                    Waiting for a ride...
+                </Typography>
+                <LinearProgress
+                    sx={{
+                        '& .MuiLinearProgress-bar': {
+                            animationDuration: '4s', // по умолчанию ~2s
+                        },
+                    }} />
+            </Stack>}
+            {flowStep == DriverFlowStep.OrderPreview && <Stack>
+                <Typography
+                    sx={{
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        textAlign: "center",
+                        padding: '15px',
+                    }}>
+                    You have a new ride offer!
+                </Typography>
+                <Stack sx={{ padding: '0 15px 15px 15px' }}>
+                    <Typography>
+                        Passenger: {offer?.passenger_name}
+                    </Typography>
+                    <Typography>
+                        Distance to pickup: {(offer?.distance_meters ?? 0) / 1000} km
+                    </Typography>
+                    <Typography>
+                        From: {offer?.origin.short_name}
+                    </Typography>
+                    <Typography>
+                        To: {offer?.destination.short_name}
+                    </Typography>
+                </Stack>
+                <Stack 
+                    direction="row"
+                    spacing={1}
+                    sx={{ 
+                        width: "100%", 
+                        padding: '10px'
+                    }}>
+                    <Button sx={{ 
+                            flex: 1,
+                            backgroundColor: "var(--tg-theme-button-color)",
+                            color: "var(--tg-theme-button-text-color)",
+                            "&:hover": {
+                                opacity: 0.92
+                            }
+                        }}
+                        onClick={acceptOffer}>
+                        Принять
+                    </Button>
+                    <Button sx={{ 
+                            flex: 1,
+                            backgroundColor: "var(--tg-theme-secondary-bg-color)",
+                            color: "var(--tg-theme-destructive-text-color)",
+                            "&:hover": {
+                                opacity: 0.92
+                            }
+                        }}
+                        onClick={declineOffer}>
+                        Отклонить
+                    </Button>
+                </Stack>
+            </Stack>}
         </BottomSheet>
-        <CustomWebAppMainButton
+        {flowStep != DriverFlowStep.OrderPreview && 
+            <CustomWebAppMainButton
             disable={!currentLocation}
             text={mainButtonCaption()}
-            onClick={onMainClick} />
+            onClick={onMainClick} />}
     </Stack>
 }

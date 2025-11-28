@@ -18,7 +18,7 @@ interface RiderMapProps {
     flowStep: RiderFlowStep;
 }
 
-const libraries: ("places" | "marker")[] = ["places", "marker"];
+const libraries: ("places" | "marker" | "geometry")[] = ["places", "marker", "geometry"];
 
 // const mapStyle: google.maps.MapTypeStyle[] = [
 //     { elementType: 'geometry', stylers: [{ color: '#212121' }] },

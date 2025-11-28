@@ -40,9 +40,9 @@ export function getAddressOutput(place?: google.maps.places.PlaceResult) {
 }
 
 export interface PlaceDto {
-  placeId: string;
+  place_id: string;
   address: string;
-  shortName: string;
+  short_name: string;
   latitude: number;
   longitude: number;
 
@@ -51,8 +51,8 @@ export interface PlaceDto {
   country?: string | null;
   phone?: string | null;
   street?: string | null;
-  zipCode?: string | null;
-  buildingNumber?: string | null;
+  zip_code?: string | null;
+  building_number?: string | null;
 }
 
 function getComponent(p: google.maps.places.PlaceResult, type: string): string | null {
@@ -69,7 +69,7 @@ export function toPlaceDto(p: google.maps.places.PlaceResult): PlaceDto | null {
   const addressOutput = getAddressOutput(p);
 
   const street = getComponent(p, "route");
-  const buildingNumber = getComponent(p, "street_number");
+  const building_number = getComponent(p, "street_number");
   const city =
     getComponent(p, "locality") ??
     getComponent(p, "administrative_area_level_2") ??
@@ -81,22 +81,22 @@ export function toPlaceDto(p: google.maps.places.PlaceResult): PlaceDto | null {
     null;
 
   const country = getComponent(p, "country");
-  const zipCode = getComponent(p, "postal_code");
+  const zip_code = getComponent(p, "postal_code");
 
   return {
-    placeId: p.place_id,
+    place_id: p.place_id,
     latitude: p.geometry.location.lat(),
     longitude: p.geometry.location.lng(),
     address: addressOutput.fullAddress,
-    shortName: addressOutput.shortName,
+    short_name: addressOutput.shortName,
 
     // дополнительные поля
     city,
     district,
     country,
     street,
-    zipCode,
-    buildingNumber,
+    zip_code,
+    building_number,
     phone: p.formatted_phone_number ?? null
   };
 }

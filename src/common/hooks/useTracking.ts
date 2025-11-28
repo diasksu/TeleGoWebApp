@@ -21,8 +21,8 @@ export function useTracking() {
                     lng: pos.coords.longitude
                 };
 
-                setPosition(newPos);  // for UI
                 posRef.current = newPos; // always fresh for the interval
+                setPosition(newPos);  // for UI
             },
             (err) => console.error("GPS error:", err),
             { enableHighAccuracy: true }

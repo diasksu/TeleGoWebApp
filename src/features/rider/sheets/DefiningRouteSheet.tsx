@@ -12,7 +12,7 @@ import type { TariffState } from "../types";
 import SelectPlaceSegment from "../components/SelectPlaceSegment";
 import { WebAppBackButton } from "@kloktunov/react-telegram-webapp";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 
 interface DefiningRouteSheetProps {
     tariffState?: TariffState | null;
@@ -23,6 +23,8 @@ interface DefiningRouteSheetProps {
     setDestination?: (destination: google.maps.places.PlaceResult) => void;
     pointsDialogOpen: boolean;
     setPointsDialogOpen: (open: boolean) => void;
+    adjustment: number;
+    setAdjustment: Dispatch<SetStateAction<number>>;
 }
 
 export default function DefiningRouteSheet({ 
@@ -32,6 +34,8 @@ export default function DefiningRouteSheet({
     destination,
     setOrigin,
     setDestination,
+    adjustment,
+    setAdjustment,
     pointsDialogOpen,
     setPointsDialogOpen
 }: DefiningRouteSheetProps) 
@@ -39,6 +43,7 @@ export default function DefiningRouteSheet({
     const theme = useTheme();
     const navigate = useNavigate();
     const [activeField, setActiveField] = useState<'origin' | 'destination'>('origin');
+    const estimation = tariffState?.data?.estimation;
 
     const handleDrawerClose = (origin: google.maps.places.PlaceResult, destination: google.maps.places.PlaceResult) => {
         setOrigin?.(origin);
@@ -56,7 +61,22 @@ export default function DefiningRouteSheet({
     const onOpen = (field: 'origin' | 'destination') => {
         setActiveField(field);
         setPointsDialogOpen(true);
+    }    
+
+    const adjustPrice = (increase: boolean): void => {
+        const limit = tariffState?.data?.estimation.adjustment_limit ?? 0;
+        setAdjustment(prev => {
+            const next = increase ? prev + 1 : prev - 1;
+            if (next < - limit) return prev;
+            if (next > limit) return prev;
+            return next;
+        });
     }
+    const formattedPrice = estimation ? 
+        (estimation.currency_symbol_position === 'before' 
+            ? `${estimation.currency_symbol}${estimation.amount + adjustment}` 
+            : `${estimation.amount + adjustment}${estimation.currency_symbol}`) 
+        : '';
 
     return <>
         <Stack
@@ -98,7 +118,7 @@ export default function DefiningRouteSheet({
                 Loading tariff ...
             </Typography>
         )}
-        {tariffState?.data?.distance_km && (
+        {estimation?.distance_km && (
             <Typography
                 sx={{
                     color: "#bbb",
@@ -109,11 +129,11 @@ export default function DefiningRouteSheet({
                     py: "6px",
                 }}
             >
-                📏 {tariffState.data.distance_km.toFixed(1)} km • 🕒 {Math.round(tariffState.data.duration_min)} min
+                📏 {estimation?.distance_km.toFixed(1)} km • 🕒 {Math.round(estimation?.duration_min || 0)} min
             </Typography>
         )}
 
-        {tariffState?.data?.formatted && (
+        {estimation?.formatted && (
             <Stack
                 alignItems={"center"}
                 justifyContent="center"
@@ -126,7 +146,9 @@ export default function DefiningRouteSheet({
                         "&:hover": { background: "#444" },
                         width: 30,
                         height: 30,
+                        lineHeight: 1
                     }}
+                    onClick={() => adjustPrice(false)}
                 >
                     -
                 </IconButton>
@@ -137,7 +159,7 @@ export default function DefiningRouteSheet({
                         textAlign: "center",
                         padding: '15px'
                     }}>
-                    {tariffState?.data ? tariffState?.data.formatted : ''}
+                    {formattedPrice}
                 </Typography>
                 <IconButton
                     size="small"
@@ -147,7 +169,9 @@ export default function DefiningRouteSheet({
                         "&:hover": { background: "#444" },
                         width: 30,
                         height: 30,
+                        lineHeight: 1
                     }}
+                    onClick={() => adjustPrice(true)}
                 >
                     +
                 </IconButton>

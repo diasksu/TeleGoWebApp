@@ -3,6 +3,8 @@ import type { PlaceDto } from "../../common/utils/addressHelpers";
 export interface RideRequestRequest {
     origin: PlaceDto;
     destination: PlaceDto;
+    quote_id?: string;
+    adjustment: number | null;
 }
 
 export interface RideRequestResponse {
@@ -10,6 +12,7 @@ export interface RideRequestResponse {
 }
 
 export interface LocationDto {
+    place_id: string;
     latitude: number;
     longitude: number;
 }
@@ -19,17 +22,25 @@ export interface TariffRequest {
     destination: LocationDto;
 }
 
-export interface TariffInfo {
+export interface TariffResponse {
+    estimation: TariffEstimation;
+    quote_id: string;
+}
+
+export interface TariffEstimation {
     amount: number;
     formatted: string;
     currency: string;
     distance_km: number;
     duration_min: number;
+    currency_symbol: string;
+    currency_symbol_position: 'before' | 'after';
+    adjustment_limit: number;
 }
 
 export interface TariffState {
     loading: boolean;
-    data: TariffInfo | null;
+    data: TariffResponse | null;
     error: string | null;
 }
 

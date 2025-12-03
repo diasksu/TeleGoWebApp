@@ -26,14 +26,13 @@ export default function RiderPage() {
     const [destination, setDestination] = useState<google.maps.places.PlaceResult>();
     const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
     const [map, setMap] = useState<google.maps.Map | null>(null);
-    const { tariffState, calculateTariff } = useTariff();
     const [flowStep, setFlowStep] = useState(RiderFlowStep.DefiningRoute);
-
+    const [adjustment, setAdjustment] = useState<number>(0);
     const [snapPoints, setSnapPoints] = useState<number[]>([]);
+    const { tariffState, calculateTariff } = useTariff();
 
     const handleApiError = useApiErrorHandler();
 
-    // useFakeDrivers(flowStep === RiderFlowStep.WaitingForDriver, origin?.geometry?.location, map);
     useFakeDrivers(
         flowStep === RiderFlowStep.WaitingForDriver, 
         {
@@ -75,7 +74,9 @@ export default function RiderPage() {
         if(flowStep == RiderFlowStep.DefiningRoute) {
             const rideRequest: RideRequestRequest = {
                 origin: toPlaceDto(origin!)!,
-                destination: toPlaceDto(destination!)!
+                destination: toPlaceDto(destination!)!,
+                quote_id: tariffState.data?.quote_id,
+                adjustment: adjustment
             };
             try {
                 webApp?.MainButton.showProgress();
@@ -107,6 +108,10 @@ export default function RiderPage() {
         }
         createProfile();
     }, []);
+
+    useEffect(() => {
+        setAdjustment!(0);
+    }, [tariffState, setAdjustment]);
 
    useEffect(() => {
         if (!map) return;
@@ -167,6 +172,8 @@ export default function RiderPage() {
                     destination={destination}
                     setOrigin={setOrigin}
                     setDestination={setDestination}
+                    adjustment={adjustment!}
+                    setAdjustment={setAdjustment}
                     tariffState={tariffState}
                     pointsDialogOpen={pointsDialogOpen}
                     setPointsDialogOpen={setPointsDialogOpen} />}

@@ -17,6 +17,12 @@ export type PlaceDto = {
     longitude: number;
 };
 
+export type DriverOfferPriceDto = {
+    amount: number;
+    currency_symbol: string;
+    currency_symbol_position: 'before' | 'after';
+};
+
 export type DriverOfferFullDto = {
     offer_id: string;
     driver_id: string;
@@ -25,4 +31,5 @@ export type DriverOfferFullDto = {
     passenger_name: string;
     origin: PlaceDto;
     destination: PlaceDto;
+    price: DriverOfferPriceDto;
 };

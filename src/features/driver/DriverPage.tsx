@@ -20,6 +20,7 @@ import { locales } from '../../common/localization/locales';
 import { apiClient } from '../../api/backend';
 import { useTracking } from '../../common/hooks/useTracking';
 import { DriverFlowStep, type DriverOfferFullDto } from './types';
+import { useInterval } from '../../common/hooks/useInterval';
 
 const libraries: ("places" | "marker")[] = ["places", "marker"];
 
@@ -50,7 +51,7 @@ export default function DriverPage() {
     const pickupRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
 
     const { getCurrentLocation } = useCurrentLocation();
-    const { startTracking, stopTracking } = useTracking();
+    const { position, startTracking, stopTracking } = useTracking();
     const handleApiError = useApiErrorHandler();
     const [flowStep, setFlowStep] = useState(DriverFlowStep.Offline);
 
@@ -90,7 +91,10 @@ export default function DriverPage() {
     useEffect(() => {
         if (!map) return;
         if (currentLocation) {
-            if(flowStep == DriverFlowStep.Online || flowStep == DriverFlowStep.Offline) {
+            if(flowStep == DriverFlowStep.Online || 
+                flowStep == DriverFlowStep.Offline || 
+                flowStep == DriverFlowStep.GoingToPickup || 
+                flowStep == DriverFlowStep.RideInProgress) {
                 map.panTo(currentLocation);
                 map.setZoom(16);
             }
@@ -147,6 +151,19 @@ export default function DriverPage() {
             },
             (result, status) => {
                 if (status === 'OK' && result) {
+                    const latlngs = result.routes[0].overview_path.map(p => ({
+                        latitude: p.lat(),
+                        longitude: p.lng()
+                    }));
+
+                    window.dispatchEvent(new CustomEvent("geosim:setRoute", {
+                        detail: { route: latlngs }
+                    }));
+
+                    setTimeout(() => {
+                        window.dispatchEvent(new Event("geosim:start"));
+                    }, 3000);
+
                     renderer.setDirections(result);
                 } else {
                     console.error('Directions request failed:', status);
@@ -213,16 +230,46 @@ export default function DriverPage() {
         return () => renderer.setMap(null);
     }, [offer, map])
 
+    useEffect(() => {
+        if (!position) return;
+        updateDriverPosition(position);
+    }, [position]);
+
+    useInterval(() => {
+        if (!position) return;
+        updateDriverState(position);
+    }, 15000);
+
     const onMainClick = async () => {
         switch(flowStep) {
             case DriverFlowStep.Offline:
                 await goOnline();
-                setFlowStep(DriverFlowStep.Online);
-            break;
+                break;
             case DriverFlowStep.Online:
                 await goOffline();
-                setFlowStep(DriverFlowStep.Offline);
-            break;
+                break;
+            case DriverFlowStep.ArrivedAtPickup: {
+                const result = rideRendererRef.current?.getDirections();
+                const latlngs = result?.routes[0].overview_path.map(p => ({
+                    latitude: p.lat(),
+                    longitude: p.lng()
+                }));
+                window.dispatchEvent(new CustomEvent("geosim:setRoute", {
+                    detail: { route: latlngs }
+                }));
+                setTimeout(() => {
+                    window.dispatchEvent(new Event("geosim:start"));
+                }, 3000);
+                setFlowStep(DriverFlowStep.RideInProgress);
+                break;
+            }
+            case DriverFlowStep.RideInProgress:
+                window.dispatchEvent(new Event("geosim:stop"));
+                setFlowStep(DriverFlowStep.RideCompleted);
+                break;
+            case DriverFlowStep.RideCompleted:
+                await goOnline();
+                break;
         }
     }
 
@@ -232,11 +279,32 @@ export default function DriverPage() {
             webApp?.showAlert('Could not get current location');
             return;
         }
-        await sendState(loc);
-        startTracking(sendState, 5000); 
+        await updateDriverState(loc);
+        startTracking(); 
+        setFlowStep(DriverFlowStep.Online);
     }
 
-    const sendState = async (pos: google.maps.LatLngLiteral) => {
+    const updateDriverPosition = async (pos: google.maps.LatLngLiteral) => {
+        setCurrentLocation(pos);
+        if(flowStep == DriverFlowStep.GoingToPickup && offer) {
+            const originLat = offer.origin.latitude;
+            const originLng = offer.origin.longitude;
+            const driverLat = pos.lat;
+            const driverLng = pos.lng;  
+            const dist = google.maps.geometry.spherical.computeDistanceBetween(
+                new google.maps.LatLng(driverLat, driverLng),
+                new google.maps.LatLng(originLat, originLng)
+            );
+            if(dist < 50) {
+                setFlowStep(DriverFlowStep.ArrivedAtPickup);
+                setTimeout(() => {
+                    window.dispatchEvent(new Event("geosim:stop"));
+                }, 3000);
+            }
+        }
+    };
+
+    const updateDriverState = async (pos: google.maps.LatLngLiteral) => {
         await apiClient.post("/api/me/driver/state", {
             status: "ONLINE_ACTIVE",
             latitude: pos.lat,
@@ -247,6 +315,7 @@ export default function DriverPage() {
     const goOffline = () => {
         stopTracking();
         apiClient.post("/api/me/driver/state", { status: "OFFLINE" });
+        setFlowStep(DriverFlowStep.Offline);
     };
 
     const mainButtonCaption = () => {
@@ -257,6 +326,12 @@ export default function DriverPage() {
                 return locales.driverGoOffline;
             case DriverFlowStep.OrderPreview:
                 return locales.driverAccept
+            case DriverFlowStep.ArrivedAtPickup:
+                return locales.driverStartRide;
+            case DriverFlowStep.RideInProgress:
+                return locales.driverEndRide;
+            case DriverFlowStep.RideCompleted:
+                return locales.driverGoOnline;
         }
     }
     
@@ -276,12 +351,16 @@ export default function DriverPage() {
                 { status: 1 }
             );
             // всё ок
-            setFlowStep(DriverFlowStep.GoingToPickup);
+            setFlowStep(DriverFlowStep.GoingToPickup);            
         }
         catch (e) {
             handleApiError(e, 'Не удалось принять заказ');
         }
     }
+
+    const formattedPrice = offer?.price.currency_symbol_position === 'before' ? 
+        `${offer?.price.currency_symbol}${offer?.price.amount}` : 
+        `${offer?.price.amount}${offer?.price.currency_symbol}`;
  
     return <Stack>
         <LoadScript
@@ -386,6 +465,9 @@ export default function DriverPage() {
                     <Typography>
                         To: {offer?.destination.short_name}
                     </Typography>
+                    <Typography>
+                        Price: {formattedPrice}
+                    </Typography>
                 </Stack>
                 <Stack 
                     direction="row"
@@ -418,11 +500,114 @@ export default function DriverPage() {
                     </Button>
                 </Stack>
             </Stack>}
+            {flowStep == DriverFlowStep.GoingToPickup && <Stack>
+                <Typography
+                    sx={{
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        textAlign: "center",
+                        padding: '15px',
+                    }}>
+                    Heading to pickup location...
+                </Typography>
+            </Stack>}
+            {flowStep == DriverFlowStep.ArrivedAtPickup && <Stack>
+                <Typography
+                    sx={{
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        textAlign: "center",
+                        padding: '15px',
+                    }}>
+                    You have arrived at the pickup location.
+                </Typography>
+                <Stack sx={{ padding: '0 15px 15px 15px' }}>
+                    <Typography>
+                        Passenger: {offer?.passenger_name}
+                    </Typography>
+                    <Typography>
+                        From: {offer?.origin.short_name}
+                    </Typography>
+                    <Typography>
+                        To: {offer?.destination.short_name}
+                    </Typography>
+                     <Stack spacing={1} sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                        Если по какой-то причине вы не смогли связаться с пассажиром,
+                        вы можете отменить поездку.
+                    </Typography>
+
+                    <Typography
+                        variant="body1"
+                        sx={{
+                            textDecoration: 'underline',
+                            color: '#3876F0',
+                            cursor: 'pointer',
+                            fontWeight: 500
+                        }}
+                        onClick={() => {webApp?.showAlert("Поездка отменена")}} 
+                    >
+                        Отменить поездку
+                    </Typography>
+                </Stack>
+                </Stack>
+            </Stack>}
+            {flowStep == DriverFlowStep.RideInProgress && <Stack>
+                <Typography
+                    sx={{
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        textAlign: "center",
+                        padding: '15px',
+                    }}>
+                    Ride in progress...
+                </Typography>
+                <Stack sx={{ padding: '0 15px 15px 15px' }}>
+                    <Typography>
+                        Passenger: {offer?.passenger_name}
+                    </Typography>
+                    <Typography>
+                        From: {offer?.origin.short_name}
+                    </Typography>
+                    <Typography>
+                        To: {offer?.destination.short_name}
+                    </Typography>
+                </Stack>
+            </Stack>}
+            {flowStep == DriverFlowStep.RideCompleted && <Stack>
+                <Typography
+                    sx={{
+                        fontSize: 20,
+                        fontWeight: 'bold',
+                        textAlign: "center",
+                        padding: '15px',
+                    }}>
+                    You have completed the ride.
+                </Typography>
+                <Stack sx={{ padding: '0 15px 15px 15px' }}>
+                    <Typography variant="body2" color="text.secondary">
+                        Если вы хотите, можете остаться в оффлайн.
+                    </Typography>
+                    <Typography
+                        variant="body1"
+                        sx={{
+                            textDecoration: 'underline',
+                            color: '#3876F0',
+                            cursor: 'pointer',
+                            fontWeight: 500
+                        }}
+                        onClick={goOffline} 
+                    >
+                        Оставаться в оффлайн
+                    </Typography>
+                </Stack>
+            </Stack>}
         </BottomSheet>
         {flowStep != DriverFlowStep.OrderPreview && 
+         flowStep != DriverFlowStep.GoingToPickup &&
             <CustomWebAppMainButton
-            disable={!currentLocation}
-            text={mainButtonCaption()}
-            onClick={onMainClick} />}
+                disable={!currentLocation}
+                text={mainButtonCaption()}
+                onClick={onMainClick} />}
     </Stack>
 }

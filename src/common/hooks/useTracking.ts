@@ -4,9 +4,9 @@ export function useTracking() {
     const [position, setPosition] = useState<google.maps.LatLngLiteral | null>(null);
     const watchIdRef = useRef<number | null>(null);
 
-    const startTracking = () => {
+    const startTracking = (initialPosition: google.maps.LatLngLiteral) => {
         if (watchIdRef.current !== null) return;
-
+        setPosition(initialPosition);
         watchIdRef.current = navigator.geolocation.watchPosition(
             (pos) => {
                 const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };

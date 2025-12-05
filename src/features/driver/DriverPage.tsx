@@ -280,7 +280,7 @@ export default function DriverPage() {
             return;
         }
         await updateDriverState(loc);
-        startTracking(); 
+        startTracking(loc); 
         setFlowStep(DriverFlowStep.Online);
     }
 

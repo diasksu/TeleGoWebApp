@@ -19,7 +19,7 @@ import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppM
 import { locales } from '../../common/localization/locales';
 import { apiClient } from '../../api/backend';
 import { useTracking } from '../../common/hooks/useTracking';
-import { DriverFlowStep, type DriverOfferFullDto } from './types';
+import { DriverFlowStep, type DriverOfferFullDto, type PostDriverPositionDto, type PostDriverStateDto } from './types';
 import { useInterval } from '../../common/hooks/useInterval';
 
 const libraries: ("places" | "marker")[] = ["places", "marker"];
@@ -237,7 +237,7 @@ export default function DriverPage() {
 
     useInterval(() => {
         if (!position) return;
-        updateDriverState(position);
+        postDriverPosition(position);
     }, 15000);
 
     const onMainClick = async () => {
@@ -279,7 +279,7 @@ export default function DriverPage() {
             webApp?.showAlert('Could not get current location');
             return;
         }
-        await updateDriverState(loc);
+        await postDriverState("ONLINE_ACTIVE", loc);
         startTracking(loc); 
         setFlowStep(DriverFlowStep.Online);
     }
@@ -304,17 +304,28 @@ export default function DriverPage() {
         }
     };
 
-    const updateDriverState = async (pos: google.maps.LatLngLiteral) => {
-        await apiClient.post("/api/me/driver/state", {
-            status: "ONLINE_ACTIVE",
+    const postDriverState = async (status: string, pos?: google.maps.LatLngLiteral) => {
+        const payload : PostDriverStateDto = {
+            status: status
+        };
+        if (pos) {
+            payload.latitude = pos.lat;
+            payload.longitude = pos.lng;
+        }
+        await apiClient.post("/api/me/driver/state", payload);
+    };
+
+    const postDriverPosition = async (pos: google.maps.LatLngLiteral) => {
+        const payload : PostDriverPositionDto = {
             latitude: pos.lat,
             longitude: pos.lng
-        });
+        };
+        await apiClient.post("/api/me/driver/position", payload);
     };
 
     const goOffline = () => {
         stopTracking();
-        apiClient.post("/api/me/driver/state", { status: "OFFLINE" });
+        postDriverState("OFFLINE");
         setFlowStep(DriverFlowStep.Offline);
     };
 
@@ -337,8 +348,7 @@ export default function DriverPage() {
     
     const declineOffer = async () => {
         await apiClient.post(
-            `/api/me/driver/offers/${offer?.offer_id}`,
-            { status: 2 }  // Declined
+            `/api/me/driver/offers/${offer?.offer_id}/decline`
         );
         setOffer(null);
         setFlowStep(DriverFlowStep.Online);
@@ -347,10 +357,8 @@ export default function DriverPage() {
     const acceptOffer = async () => {
         try {
             await apiClient.post<string | null>(
-                `/api/me/driver/offers/${offer?.offer_id}`,
-                { status: 1 }
+                `/api/me/driver/offers/${offer?.offer_id}/accept`
             );
-            // всё ок
             setFlowStep(DriverFlowStep.GoingToPickup);            
         }
         catch (e) {

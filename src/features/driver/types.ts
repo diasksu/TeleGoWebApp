@@ -33,3 +33,14 @@ export type DriverOfferFullDto = {
     destination: PlaceDto;
     price: DriverOfferPriceDto;
 };
+
+export type PostDriverStateDto = {
+    status: string;
+    latitude?: number;
+    longitude?: number;
+};
+
+export type PostDriverPositionDto = {
+    latitude: number;
+    longitude: number;
+};

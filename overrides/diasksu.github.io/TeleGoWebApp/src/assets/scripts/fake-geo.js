@@ -73,8 +73,8 @@ navigator.geolocation.getCurrentPosition = function (success) {
   if (!route.length) {
     success({
       coords: {
-        latitude: 36.9209,
-        longitude:30.72094,
+        latitude: 36.9110,
+        longitude:30.72594,
         accuracy: 5
       }
     });

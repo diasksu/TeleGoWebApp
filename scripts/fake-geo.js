@@ -105,27 +105,27 @@ navigator.geolocation.clearWatch = function (id) {
   watchers.delete(id);
 };
 
-// // -------------------------
-// // Telegram LocationManager override (mobile fix)
-// // -------------------------
-// if (window.Telegram?.WebApp?.LocationManager) {
-//   const lm = window.Telegram.WebApp.LocationManager;
-//   lm.getLocation = function (cb) {
-//     let p;
-//     if (route.length) {
-//       p = route[idx] ?? route[0];
-//     } else {
-//       // hard default
-//       p = {
-//         latitude: 36.9110,
-//         longitude: 30.72594
-//       };
-//     }
-//     cb({
-//       latitude: p.latitude,
-//       longitude: p.longitude,
-//       accuracy: 5
-//     });
-//   };
-//   console.log('[fake-geo] Telegram LocationManager overridden');
-// }
+// -------------------------
+// Telegram LocationManager override (mobile fix)
+// -------------------------
+if (window.Telegram?.WebApp?.LocationManager) {
+  const lm = window.Telegram.WebApp.LocationManager;
+  lm.getLocation = function (cb) {
+    let p;
+    if (route.length) {
+      p = route[idx] ?? route[0];
+    } else {
+      // hard default
+      p = {
+        latitude: 36.9110,
+        longitude: 30.72594
+      };
+    }
+    cb({
+      latitude: p.latitude,
+      longitude: p.longitude,
+      accuracy: 5
+    });
+  };
+  console.log('[fake-geo] Telegram LocationManager overridden');
+}

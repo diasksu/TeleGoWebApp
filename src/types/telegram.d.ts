@@ -34,6 +34,7 @@ declare global {
     Telegram: {
       WebApp: TelegramWebApp;
     };
+    debugInfo: string;
   }
 }
 

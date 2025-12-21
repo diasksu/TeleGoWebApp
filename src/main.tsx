@@ -1,4 +1,5 @@
 // import { StrictMode } from 'react'
+import "../src/assets/scripts/fake-geo.js";
 import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom';
 import { TelegramWebApp } from '@kloktunov/react-telegram-webapp';

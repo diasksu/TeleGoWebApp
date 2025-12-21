@@ -10,19 +10,19 @@ const center = { lat: 36.910894, lng: 30.720875 };
 export function useCurrentLocation() {
     const getCurrentLocation = useCallback(async (): Promise<google.maps.LatLngLiteral | null> => {
         return new Promise<google.maps.LatLngLiteral | null>((resolve) => {
-            const locationManager = window.Telegram?.WebApp?.LocationManager;
+            // const locationManager = window.Telegram?.WebApp?.LocationManager;
             
-            // First try to use Telegram LocationManager
-            if (locationManager?.isLocationAvailable) {
-                locationManager.getLocation((location: LocationData | null) => {
-                    if (location) {
-                        resolve({ lat: location.latitude, lng: location.longitude });
-                    } else {
-                        resolve(center);
-                    }
-                });
-                return;
-            }
+            // // First try to use Telegram LocationManager
+            // if (locationManager?.isLocationAvailable) {
+            //     locationManager.getLocation((location: LocationData | null) => {
+            //         if (location) {
+            //             resolve({ lat: location.latitude, lng: location.longitude });
+            //         } else {
+            //             resolve(center);
+            //         }
+            //     });
+            //     return;
+            // }
             
             // Fallback to standard geolocation API
             if (navigator.geolocation) {

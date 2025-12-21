@@ -4,6 +4,7 @@ import {
     IconButton,
     LinearProgress,
     Stack,
+    TextField,
     Typography, 
 } from '@mui/material';
 import '../../assets/css/takeme.css';
@@ -19,8 +20,10 @@ import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppM
 import { locales } from '../../common/localization/locales';
 import { apiClient } from '../../api/backend';
 import { useTracking } from '../../common/hooks/useTracking';
-import { DriverFlowStep, type DriverOfferFullDto, type PostDriverPositionDto, type PostDriverStateDto } from './types';
+import { DriverFlowStep, type DriverOfferFullDto, type DriverRideSnapshotDto, type PostDriverPositionDto, type PostDriverStateDto } from './types';
 import { useInterval } from '../../common/hooks/useInterval';
+import DebugPanel from '../../common/components/DebugPanel';
+import { RideStatus } from '../rider/types';
 
 const libraries: ("places" | "marker")[] = ["places", "marker"];
 
@@ -49,6 +52,7 @@ export default function DriverPage() {
     const [offer, setOffer] = useState<DriverOfferFullDto | null>(null);
     const rideRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
     const pickupRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+    const [pickupCode, setPickupCode] = useState(Number);
 
     const { getCurrentLocation } = useCurrentLocation();
     const { position, startTracking, stopTracking } = useTracking();
@@ -238,7 +242,7 @@ export default function DriverPage() {
     useInterval(() => {
         if (!position) return;
         postDriverPosition(position);
-    }, 15000);
+    }, 3000);
 
     const onMainClick = async () => {
         switch(flowStep) {
@@ -286,22 +290,6 @@ export default function DriverPage() {
 
     const updateDriverPosition = async (pos: google.maps.LatLngLiteral) => {
         setCurrentLocation(pos);
-        if(flowStep == DriverFlowStep.GoingToPickup && offer) {
-            const originLat = offer.origin.latitude;
-            const originLng = offer.origin.longitude;
-            const driverLat = pos.lat;
-            const driverLng = pos.lng;  
-            const dist = google.maps.geometry.spherical.computeDistanceBetween(
-                new google.maps.LatLng(driverLat, driverLng),
-                new google.maps.LatLng(originLat, originLng)
-            );
-            if(dist < 50) {
-                setFlowStep(DriverFlowStep.ArrivedAtPickup);
-                setTimeout(() => {
-                    window.dispatchEvent(new Event("geosim:stop"));
-                }, 3000);
-            }
-        }
     };
 
     const postDriverState = async (status: string, pos?: google.maps.LatLngLiteral) => {
@@ -320,7 +308,15 @@ export default function DriverPage() {
             latitude: pos.lat,
             longitude: pos.lng
         };
-        await apiClient.post("/api/me/driver/position", payload);
+        const snapshot = await apiClient.post<DriverRideSnapshotDto>("/api/me/driver/position", payload);
+        if (snapshot.status == RideStatus.Arrived) {
+            if (flowStep === DriverFlowStep.GoingToPickup) {
+                setTimeout(() => {
+                    window.dispatchEvent(new Event("geosim:stop"));
+                }, 3000);
+                setFlowStep(DriverFlowStep.ArrivedAtPickup);
+            }
+        }
     };
 
     const goOffline = () => {
@@ -344,6 +340,13 @@ export default function DriverPage() {
             case DriverFlowStep.RideCompleted:
                 return locales.driverGoOnline;
         }
+    }
+
+    const mainButtonDisabled = () => {
+        if(flowStep === DriverFlowStep.ArrivedAtPickup) {
+            return pickupCode?.toString().length !== 4;
+        }
+        return !currentLocation;
     }
     
     const declineOffer = async () => {
@@ -544,7 +547,6 @@ export default function DriverPage() {
                         Если по какой-то причине вы не смогли связаться с пассажиром,
                         вы можете отменить поездку.
                     </Typography>
-
                     <Typography
                         variant="body1"
                         sx={{
@@ -557,6 +559,27 @@ export default function DriverPage() {
                     >
                         Отменить поездку
                     </Typography>
+                    <Stack
+                        spacing={1}
+                        direction="row"
+                        alignItems="center"
+                    >
+                        <Typography variant="body2" color="text.secondary">
+                            Код посадки:
+                        </Typography>
+                        <TextField
+                            onChange={(e) => setPickupCode(Number(e.target.value))}
+                            variant="outlined"
+                            size="small"
+                            slotProps={{
+                                htmlInput: {
+                                    inputMode: 'numeric',
+                                    maxLength: 4,
+                                    minLength: 4
+                                }
+                            }}
+                        />
+                    </Stack>
                 </Stack>
                 </Stack>
             </Stack>}
@@ -614,8 +637,12 @@ export default function DriverPage() {
         {flowStep != DriverFlowStep.OrderPreview && 
          flowStep != DriverFlowStep.GoingToPickup &&
             <CustomWebAppMainButton
-                disable={!currentLocation}
+                disable={mainButtonDisabled()}
                 text={mainButtonCaption()}
                 onClick={onMainClick} />}
+        <DebugPanel 
+            isVisible={false}
+            debug={window.debugInfo}
+        />
     </Stack>
 }

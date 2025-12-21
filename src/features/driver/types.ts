@@ -44,3 +44,9 @@ export type PostDriverPositionDto = {
     latitude: number;
     longitude: number;
 };
+
+export type DriverRideSnapshotDto = {
+    ride_id: string;
+    status: number;
+    need_code: boolean;
+};

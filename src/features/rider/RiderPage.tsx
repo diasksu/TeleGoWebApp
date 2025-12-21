@@ -1,15 +1,15 @@
-import { Stack } from '@mui/material';
+import { Button, Stack } from '@mui/material';
 import '../../assets/css/takeme.css';
 import { useTelegramWebApp } from '@kloktunov/react-telegram-webapp';
 import { useCallback, useEffect, useState } from 'react';
 import { BottomSheet } from 'react-spring-bottom-sheet';
 import 'react-spring-bottom-sheet/dist/style.css';
 import { getPlaceFromCoords } from '../../api/googleMapsApi';
-import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppMainButton';
+// import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppMainButton';
 import { locales } from '../../common/localization/locales';
 import { toPlaceDto } from '../../common/utils/addressHelpers';
 import DefiningRouteSheet from './sheets/DefiningRouteSheet';
-import { RiderFlowStep, type RideRequestRequest, type RideRequestResponse } from './types';
+import { RiderFlowStep, type PassengerActiveRideProjection, type PassengerRideSnapshotDto, type RideRequestRequest, type RideRequestResponse } from './types';
 import RiderMap from './components/RiderMap';
 import { apiClient } from '../../api/backend';
 import { useApiErrorHandler } from '../../common/hooks/useApiErrorHandler';
@@ -18,6 +18,10 @@ import { useCurrentLocation } from './hooks/useCurrentLocation';
 import { useTariff } from './hooks/useTariff';
 import WaitingForDriverSheet from './sheets/WaitingForDriverSheet';
 import { useFakeDrivers } from './hooks/useFakeDrivers';
+import DriverEnRouteSheet from './sheets/DriverEnRouteSheet';
+import { useActiveRidePolling } from './hooks/useActiveRidePolling';
+import { useRideSnapshotPolling } from './hooks/useRideSnapshotPolling';
+import DriverArrivedSheet from './sheets/DriverArrivedSheet';
 
 export default function RiderPage() {
     const webApp = useTelegramWebApp();
@@ -29,6 +33,10 @@ export default function RiderPage() {
     const [flowStep, setFlowStep] = useState(RiderFlowStep.DefiningRoute);
     const [adjustment, setAdjustment] = useState<number>(0);
     const [snapPoints, setSnapPoints] = useState<number[]>([]);
+    const [activeRide, setActiveRide] = useState<PassengerActiveRideProjection | null>(null);
+    const [rideSnapshot, setRideSnapshot] = useState<PassengerRideSnapshotDto | null>(null);
+    const [driverPosition, setDriverPosition] = useState<google.maps.LatLngLiteral | null>(null);
+
     const { tariffState, calculateTariff } = useTariff();
 
     const handleApiError = useApiErrorHandler();
@@ -48,6 +56,29 @@ export default function RiderPage() {
         },
         origin?.geometry?.location, 
         map);
+
+    useActiveRidePolling(flowStep, setFlowStep, setActiveRide);
+
+    useRideSnapshotPolling(flowStep, setFlowStep, setRideSnapshot);
+
+    useEffect(() => {
+        if(!activeRide && !rideSnapshot) {
+            return;
+        }
+        if(!rideSnapshot) {
+            const pos = {
+                lat: activeRide!.driver_state.last_latitude,
+                lng: activeRide!.driver_state.last_longitude
+            };
+            setDriverPosition(pos);
+            return;
+        }
+        const pos = {
+            lat: rideSnapshot.driver_state.last_latitude,
+            lng: rideSnapshot.driver_state.last_longitude
+        };
+        setDriverPosition(pos);
+    }, [activeRide, rideSnapshot]);
 
     const handleRouteRendered = useCallback((
         originPlace: google.maps.places.PlaceResult,
@@ -113,20 +144,17 @@ export default function RiderPage() {
         setAdjustment!(0);
     }, [tariffState, setAdjustment]);
 
-   useEffect(() => {
+    useEffect(() => {
         if (!map) return;
         let cancelled = false;
-
         (async () => {
             try {
                 const loc = await getCurrentLocation();
                 if (cancelled || !loc) return;
-
                 if (!window.google?.maps?.Geocoder) {
                     console.warn('Google Maps API not ready yet');
                     return;
                 }
-
                 const place = await getPlaceFromCoords(loc);
                 if (!cancelled && place) setOrigin(place);
             } 
@@ -134,18 +162,17 @@ export default function RiderPage() {
                 handleApiError(e, 'Не удалось определить стартовую точку');
             }
         })();
-
         return () => { cancelled = true; };
     }, [map, getCurrentLocation, handleApiError]);
 
     return (
-
         <Stack sx={{ height: "100vh", position: "relative" }}>
             <RiderMap 
                 sheetMinHeight={snapPoints?.length && snapPoints[0]}
                 onRouteRendered={() => handleRouteRendered(origin!, destination!)} 
                 origin={origin}
                 destination={destination} 
+                driverPosition={driverPosition}
                 setMainMap={setMap}
                 flowStep={flowStep}/>
             <BottomSheet
@@ -166,29 +193,52 @@ export default function RiderPage() {
                     return points;
                 }}
                 defaultSnap={({ minHeight }) => minHeight }>
-                {flowStep == RiderFlowStep.DefiningRoute && <DefiningRouteSheet
-                    map={map}
-                    origin={origin}
-                    destination={destination}
-                    setOrigin={setOrigin}
-                    setDestination={setDestination}
-                    adjustment={adjustment!}
-                    setAdjustment={setAdjustment}
-                    tariffState={tariffState}
-                    pointsDialogOpen={pointsDialogOpen}
-                    setPointsDialogOpen={setPointsDialogOpen} />}
-                {flowStep == RiderFlowStep.WaitingForDriver && <WaitingForDriverSheet 
-                    origin={origin}
-                    destination={destination} />}
+                <Stack>
+                    {flowStep == RiderFlowStep.DefiningRoute && <DefiningRouteSheet
+                        map={map}
+                        origin={origin}
+                        destination={destination}
+                        setOrigin={setOrigin}
+                        setDestination={setDestination}
+                        adjustment={adjustment!}
+                        setAdjustment={setAdjustment}
+                        tariffState={tariffState}
+                        pointsDialogOpen={pointsDialogOpen}
+                        setPointsDialogOpen={setPointsDialogOpen} />}
+                    {flowStep == RiderFlowStep.WaitingForDriver && <WaitingForDriverSheet 
+                        origin={origin}
+                        destination={destination} />}
+                    {flowStep == RiderFlowStep.DriverEnRoute && activeRide && (
+                        <DriverEnRouteSheet ride={activeRide} />
+                    )}
+                    {flowStep == RiderFlowStep.DriverArrived && rideSnapshot?.ride_code && (
+                        <DriverArrivedSheet rideCode={rideSnapshot?.ride_code} />
+                    )}
+                    <Button
+                        disabled={!(origin && destination)}
+                        variant="contained"
+                        onClick={onMainClick}
+                        sx={{
+                            margin: '15px',
+                            backgroundColor: "var(--tg-theme-button-color)",
+                            color: "var(--tg-theme-button-text-color)",
+                            "&:hover": {
+                                backgroundColor: "var(--tg-theme-button-color)",
+                                opacity: 0.9,
+                            },
+                        }}
+                        >
+                        {mainButtonCaption()}
+                    </Button>
+                </Stack>
             </BottomSheet>
 
-            {!pointsDialogOpen && 
+            {/* {!pointsDialogOpen && 
                 <CustomWebAppMainButton
                     disable={!(origin && destination)}
                     text={mainButtonCaption()}
                     onClick={onMainClick} />
-            }
-
+            } */}
             <DebugPanel 
                 isVisible={false} />
         </Stack>

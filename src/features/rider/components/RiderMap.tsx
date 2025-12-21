@@ -10,6 +10,7 @@ interface RiderMapProps {
     sheetMinHeight: number; 
     origin?: google.maps.places.PlaceResult;
     destination?: google.maps.places.PlaceResult;
+    driverPosition: google.maps.LatLngLiteral | null;
     onRouteRendered?: (
         origin: google.maps.places.PlaceResult,
         destination: google.maps.places.PlaceResult
@@ -45,6 +46,7 @@ export default function RiderMap({
     onRouteRendered,
     origin,
     destination,
+    driverPosition,
     setMainMap,
     flowStep
 }: RiderMapProps) {
@@ -52,8 +54,9 @@ export default function RiderMap({
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [initialMarker, setInitialMarker] = useState<google.maps.Marker | null>(null);
     const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+    const driverMarkerRef = useRef<google.maps.Marker | null>(null);
 
-   useEffect(() => {
+    useEffect(() => {
         if (!map) return;
         if (!origin?.geometry?.location) return;
         if (destination?.geometry?.location) {
@@ -69,12 +72,37 @@ export default function RiderMap({
         map.panTo(loc);
 
         if (!initialMarker) {
-            const marker = new google.maps.Marker({ map, position: loc, label: 'WE' });
+            const marker = new google.maps.Marker({ map, position: loc, label: 'I' });
             setInitialMarker(marker);
         } else {
             initialMarker.setPosition(loc);
         }
     }, [map, origin, destination]);
+
+    useEffect(() => {
+        if (!map) return;
+        if (!driverPosition) return;
+        if (flowStep !== RiderFlowStep.DriverEnRoute) return;
+        if (!driverMarkerRef.current) {
+            driverMarkerRef.current = new google.maps.Marker({
+                map,
+                position: driverPosition,
+                label: 'D',
+            });
+            if (!origin?.geometry?.location) return;
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(origin!.geometry!.location!);
+            bounds.extend(driverPosition);
+            map.fitBounds(bounds, {
+                top: 80,
+                bottom: 80,
+                left: 60,
+                right: 60,
+            });
+        } else {
+            driverMarkerRef.current.setPosition(driverPosition);
+        }
+    }, [map, driverPosition, flowStep, origin]);
 
     useEffect(() => {
         if (!map) return;

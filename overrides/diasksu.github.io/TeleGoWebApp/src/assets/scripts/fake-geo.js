@@ -65,7 +65,6 @@ window.addEventListener("geosim:stop", () => {
   intervalId = null;
 });
 
-
 // -------------------------
 // Override getCurrentPosition
 // -------------------------
@@ -90,7 +89,6 @@ navigator.geolocation.getCurrentPosition = function (success) {
     }
   });
 };
-
 
 // -------------------------
 // Override watchPosition

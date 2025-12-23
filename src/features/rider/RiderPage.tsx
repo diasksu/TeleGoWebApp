@@ -22,6 +22,7 @@ import DriverEnRouteSheet from './sheets/DriverEnRouteSheet';
 import { useActiveRidePolling } from './hooks/useActiveRidePolling';
 import { useRideSnapshotPolling } from './hooks/useRideSnapshotPolling';
 import DriverArrivedSheet from './sheets/DriverArrivedSheet';
+import RideInProgressSheet from './sheets/RideInProgressSheet';
 
 export default function RiderPage() {
     const webApp = useTelegramWebApp();
@@ -213,6 +214,9 @@ export default function RiderPage() {
                     )}
                     {flowStep == RiderFlowStep.DriverArrived && rideSnapshot?.ride_code && (
                         <DriverArrivedSheet rideCode={rideSnapshot?.ride_code} />
+                    )}
+                    {flowStep == RiderFlowStep.RideInProgress && activeRide && (
+                        <RideInProgressSheet ride={activeRide} />
                     )}
                     <Button
                         disabled={!(origin && destination)}

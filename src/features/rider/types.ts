@@ -60,7 +60,14 @@ export interface PassengerActiveRideProjection {
     driver: PassengerDriverDto;
     driver_user: PassengerDriverUserDto;
     driver_state: PassengerDriverStateDto;
+    offer_price: OfferPriceDto;
 }
+
+export type OfferPriceDto = {
+    amount: number;
+    currency_symbol: string;
+    currency_symbol_position: 'before' | 'after';
+};
 
 export interface PassengerRideDto {
     id: string;           

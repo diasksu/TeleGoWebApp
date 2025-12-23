@@ -9,7 +9,7 @@ export function useRideSnapshotPolling(
     intervalMs: number = 3000
 ) {
     useEffect(() => {
-        if (flowStep !== RiderFlowStep.DriverEnRoute) return;
+        if (flowStep !== RiderFlowStep.DriverEnRoute && flowStep !== RiderFlowStep.DriverArrived) return;
         let cancelled = false;
         const interval = setInterval(async () => {
             try {
@@ -18,8 +18,11 @@ export function useRideSnapshotPolling(
                 );
                 if (cancelled || !snapshot) return;
                 setRideSnapshot(snapshot);
-                if(snapshot.ride_status === RideStatus.Arrived) {
+                if(snapshot.ride_status === RideStatus.Arrived && flowStep === RiderFlowStep.DriverEnRoute) {
                     setFlowStep(RiderFlowStep.DriverArrived);
+                }
+                if(snapshot.ride_status === RideStatus.InProgress && flowStep === RiderFlowStep.DriverArrived) {
+                    setFlowStep(RiderFlowStep.RideInProgress);
                 }
             } catch (e) {
                 console.warn('Ride snapshot polling error', e);

@@ -50,6 +50,7 @@ export default function DriverPage() {
     const [currentLocation, setCurrentLocation] = useState<google.maps.LatLngLiteral | null>(null);
     const [initialMarker, setInitialMarker] = useState<google.maps.Marker | null>(null);
     const [offer, setOffer] = useState<DriverOfferFullDto | null>(null);
+    const [rideId, setRideId] = useState<string | null>(null);
     const rideRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
     const pickupRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
     const [pickupCode, setPickupCode] = useState(Number);
@@ -264,6 +265,20 @@ export default function DriverPage() {
                 setTimeout(() => {
                     window.dispatchEvent(new Event("geosim:start"));
                 }, 3000);
+                try {
+                    await apiClient.post("/api/me/driver/ride/start", {
+                        ride_id: rideId,
+                        ride_code: pickupCode
+                    });
+                    // success → переход на InProgress
+                    setFlowStep(DriverFlowStep.RideInProgress);
+                } catch (e: unknown) {
+                    if (e instanceof Error && e.message.includes("409")) {
+                        webApp?.showAlert("Неверный код посадки");
+                        return;
+                    }
+                    webApp?.showAlert("Ошибка. Попробуйте ещё раз");
+                }
                 setFlowStep(DriverFlowStep.RideInProgress);
                 break;
             }
@@ -359,16 +374,20 @@ export default function DriverPage() {
 
     const acceptOffer = async () => {
         try {
-            await apiClient.post<string | null>(
+            const rideId = await apiClient.post<string | null>(
                 `/api/me/driver/offers/${offer?.offer_id}/accept`
             );
-            setFlowStep(DriverFlowStep.GoingToPickup);            
+            if(rideId) {
+                setRideId(rideId);
+                setFlowStep(DriverFlowStep.GoingToPickup);     
+            }       
         }
         catch (e) {
             handleApiError(e, 'Не удалось принять заказ');
         }
     }
 
+    // todo: format price utility, move to common, move offer price dto to common
     const formattedPrice = offer?.price.currency_symbol_position === 'before' ? 
         `${offer?.price.currency_symbol}${offer?.price.amount}` : 
         `${offer?.price.amount}${offer?.price.currency_symbol}`;

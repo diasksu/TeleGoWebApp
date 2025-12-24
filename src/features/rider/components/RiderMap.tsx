@@ -7,7 +7,6 @@ import { RiderFlowStep } from "../types";
 import HailingIcon from "../../../assets/icons/HailingIcon";
 
 interface RiderMapProps {
-    sheetMinHeight: number; 
     origin?: google.maps.places.PlaceResult;
     destination?: google.maps.places.PlaceResult;
     driverPosition: google.maps.LatLngLiteral | null;
@@ -42,7 +41,6 @@ const mapStyle: google.maps.MapTypeStyle[] = [
 ];
 
 export default function RiderMap({
-    sheetMinHeight,
     onRouteRendered,
     origin,
     destination,
@@ -67,10 +65,8 @@ export default function RiderMap({
             }
             return;
         }
-
         const loc = origin.geometry.location;
         map.panTo(loc);
-
         if (!initialMarker) {
             const marker = new google.maps.Marker({ map, position: loc, label: 'I' });
             setInitialMarker(marker);
@@ -178,7 +174,7 @@ export default function RiderMap({
                 <GoogleMap
                         mapContainerStyle={{ 
                             width: "100%", 
-                            height: `calc(100vh - ${sheetMinHeight}px + 16px)`
+                            height: "100vh"
                         }}
                         zoom={13}
                         onLoad={(map) => {
@@ -194,33 +190,31 @@ export default function RiderMap({
                             // mapId: "8a5f0c4d3a9b1234"
                         }}
                     >
-                </GoogleMap>
-
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        bottom: sheetMinHeight + 20,       
-                        right: 20,         
-                        zIndex: 2
-                    }}
-                >
-                    <IconButton
+                    <Box
                         sx={{
-                            backgroundColor: 'rgba(0,0,0,0.4)',
-                            width: 40,
-                            height: 40,
-                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' }
+                            position: 'absolute',
+                            bottom: '30px',
+                            right: '15px'
                         }}
-                        onClick={onMapButtonClick}
                     >
-                        {flowStep === RiderFlowStep.DefiningRoute && (
-                            <RouteIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
-                        )}
+                        <IconButton
+                            sx={{
+                                backgroundColor: 'rgba(0,0,0,0.4)',
+                                width: 40,
+                                height: 40,
+                                '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' }
+                            }}
+                            onClick={onMapButtonClick}
+                        >
+                            {flowStep === RiderFlowStep.DefiningRoute && (
+                                <RouteIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
+                            )}
 
-                        {flowStep === RiderFlowStep.WaitingForDriver && (
-                            <HailingIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
-                        )}
-                    </IconButton>
-                </Box>
+                            {flowStep === RiderFlowStep.WaitingForDriver && (
+                                <HailingIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
+                            )}
+                        </IconButton>
+                    </Box>
+                </GoogleMap>
             </LoadScript>;
 }

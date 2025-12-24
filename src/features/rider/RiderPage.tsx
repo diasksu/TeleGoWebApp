@@ -2,8 +2,6 @@ import { Stack } from '@mui/material';
 import '../../assets/css/takeme.css';
 import { useTelegramWebApp, WebAppMainButton } from '@kloktunov/react-telegram-webapp';
 import { useCallback, useEffect, useState } from 'react';
-import { BottomSheet } from 'react-spring-bottom-sheet';
-import 'react-spring-bottom-sheet/dist/style.css';
 import { getPlaceFromCoords } from '../../api/googleMapsApi';
 import { locales } from '../../common/localization/locales';
 import { toPlaceDto } from '../../common/utils/addressHelpers';
@@ -32,7 +30,6 @@ export default function RiderPage() {
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [flowStep, setFlowStep] = useState(RiderFlowStep.DefiningRoute);
     const [adjustment, setAdjustment] = useState<number>(0);
-    const [snapPoints, setSnapPoints] = useState<number[]>([]);
     const [activeRide, setActiveRide] = useState<PassengerActiveRideProjection | null>(null);
     const [rideSnapshot, setRideSnapshot] = useState<PassengerRideSnapshotDto | null>(null);
     const [driverPosition, setDriverPosition] = useState<google.maps.LatLngLiteral | null>(null);
@@ -162,58 +159,44 @@ export default function RiderPage() {
     return (
         <Stack sx={{ height: "100vh", position: "relative" }}>
             <RiderMap 
-                sheetMinHeight={snapPoints?.length && snapPoints[0]}
                 onRouteRendered={() => handleRouteRendered(origin!, destination!)} 
                 origin={origin}
                 destination={destination} 
                 driverPosition={driverPosition}
                 setMainMap={setMap}
-                flowStep={flowStep}/>
-            <BottomSheet
-                open={true}
-                expandOnContentDrag 
-                blocking={false}
-                scrollLocking={false}
-                snapPoints={({ minHeight, maxHeight }) => {
-                    const points = [minHeight, 0.8 * maxHeight];
-                    queueMicrotask(() => {
-                        setSnapPoints(prev => {
-                            if (!prev || prev[0] !== points[0] || prev[1] !== points[1]) {
-                                return points;
-                            }
-                            return prev;
-                        });
-                    });
-                    return points;
-                }}
-                defaultSnap={({ minHeight }) => minHeight }>
-                <Stack>
-                    {flowStep == RiderFlowStep.DefiningRoute && <DefiningRouteSheet
-                        map={map}
-                        origin={origin}
-                        destination={destination}
-                        setOrigin={setOrigin}
-                        setDestination={setDestination}
-                        adjustment={adjustment!}
-                        setAdjustment={setAdjustment}
-                        tariffState={tariffState}
-                        pointsDialogOpen={pointsDialogOpen}
-                        setPointsDialogOpen={setPointsDialogOpen} />}
-                    {flowStep == RiderFlowStep.WaitingForDriver && <WaitingForDriverSheet 
-                        origin={origin}
-                        destination={destination} />}
-                    {flowStep == RiderFlowStep.DriverEnRoute && activeRide && (
-                        <DriverEnRouteSheet ride={activeRide} />
-                    )}
-                    {flowStep == RiderFlowStep.DriverArrived && rideSnapshot?.ride_code && (
-                        <DriverArrivedSheet rideCode={rideSnapshot?.ride_code} />
-                    )}
-                    {flowStep == RiderFlowStep.RideInProgress && activeRide && (
-                        <RideInProgressSheet ride={activeRide} />
-                    )}
-                </Stack>
-            </BottomSheet>
-
+                flowStep={flowStep} />
+            <Stack
+                sx={{
+                    borderTopLeftRadius: '15px',
+                    borderTopRightRadius: '15px',
+                    marginTop: '-15px',
+                    backgroundColor: "var(--tg-theme-bg-color)",
+                    zIndex: 2,
+                }}>
+                {flowStep == RiderFlowStep.DefiningRoute && <DefiningRouteSheet
+                    map={map}
+                    origin={origin}
+                    destination={destination}
+                    setOrigin={setOrigin}
+                    setDestination={setDestination}
+                    adjustment={adjustment!}
+                    setAdjustment={setAdjustment}
+                    tariffState={tariffState}
+                    pointsDialogOpen={pointsDialogOpen}
+                    setPointsDialogOpen={setPointsDialogOpen} />}
+                {flowStep == RiderFlowStep.WaitingForDriver && <WaitingForDriverSheet 
+                    origin={origin}
+                    destination={destination} />}
+                {flowStep == RiderFlowStep.DriverEnRoute && activeRide && (
+                    <DriverEnRouteSheet ride={activeRide} />
+                )}
+                {flowStep == RiderFlowStep.DriverArrived && rideSnapshot?.ride_code && (
+                    <DriverArrivedSheet rideCode={rideSnapshot?.ride_code} />
+                )}
+                {flowStep == RiderFlowStep.RideInProgress && activeRide && (
+                    <RideInProgressSheet ride={activeRide} />
+                )}
+            </Stack>
             {!pointsDialogOpen && 
                 <WebAppMainButton
                     disable={!(origin && destination)}

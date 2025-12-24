@@ -12,7 +12,6 @@ import { useTelegramWebApp, WebAppMainButton } from '@kloktunov/react-telegram-w
 import { GoogleMap, LoadScript } from '@react-google-maps/api';
 import { useEffect, useRef, useState } from 'react';
 import RouteIcon from '../../assets/icons/RouteIcon';
-import { BottomSheet } from 'react-spring-bottom-sheet';
 import { env } from '../../env/config';
 import { useCurrentLocation } from '../rider/hooks/useCurrentLocation';
 import { useApiErrorHandler } from '../../common/hooks/useApiErrorHandler';
@@ -44,8 +43,6 @@ export default function DriverPage() {
     const webApp = useTelegramWebApp();
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
-    const [snapPoints, setSnapPoints] = useState<number[]>([]);
-    const sheetMinHeight = snapPoints?.length && snapPoints[0];
     const [currentLocation, setCurrentLocation] = useState<google.maps.LatLngLiteral | null>(null);
     const [initialMarker, setInitialMarker] = useState<google.maps.Marker | null>(null);
     const [offer, setOffer] = useState<DriverOfferFullDto | null>(null);
@@ -391,14 +388,14 @@ export default function DriverPage() {
         `${offer?.price.currency_symbol}${offer?.price.amount}` : 
         `${offer?.price.amount}${offer?.price.currency_symbol}`;
  
-    return <Stack>
+    return <Stack sx={{ height: "100vh", position: "relative" }}>
         <LoadScript
             googleMapsApiKey={env.googleMapsApiKey}
             libraries={libraries}>
             <GoogleMap
                     mapContainerStyle={{ 
                         width: "100%", 
-                        height: `calc(100vh - ${sheetMinHeight}px + 16px)`
+                        height: "100vh"
                     }}
                     zoom={13}
                     onLoad={(map) => {
@@ -413,47 +410,35 @@ export default function DriverPage() {
                         // mapId: "8a5f0c4d3a9b1234"
                     }}
                 >
-            </GoogleMap>
-
-            <Box
-                sx={{
-                    position: 'absolute',
-                    bottom: sheetMinHeight + 20,       
-                    right: 20,         
-                    zIndex: 2
-                }}
-            >
-                <IconButton
+                <Box
                     sx={{
-                        backgroundColor: 'rgba(0,0,0,0.4)',
-                        width: 40,
-                        height: 40,
-                        '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' }
+                        position: 'absolute',
+                        bottom: '30px',
+                        right: '15px'
                     }}
-                    onClick={onMapButtonClick}
                 >
-                    <RouteIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
-                </IconButton>
-            </Box>
+                    <IconButton
+                        sx={{
+                            backgroundColor: 'rgba(0,0,0,0.4)',
+                            width: 40,
+                            height: 40,
+                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' }
+                        }}
+                        onClick={onMapButtonClick}
+                    >
+                        <RouteIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
+                    </IconButton>
+                </Box>   
+            </GoogleMap>
         </LoadScript>
-        <BottomSheet
-            open={true}
-            expandOnContentDrag 
-            blocking={false}
-            scrollLocking={false}
-            snapPoints={({ minHeight, maxHeight }) => {
-                const points = [minHeight, 0.8 * maxHeight];
-                queueMicrotask(() => {
-                    setSnapPoints(prev => {
-                        if (!prev || prev[0] !== points[0] || prev[1] !== points[1]) {
-                            return points;
-                        }
-                        return prev;
-                    });
-                });
-                return points;
-            }}
-            defaultSnap={({ minHeight }) => minHeight }>
+        <Stack
+            sx={{
+                borderTopLeftRadius: '15px',
+                borderTopRightRadius: '15px',
+                marginTop: '-15px',
+                backgroundColor: "var(--tg-theme-bg-color)",
+                zIndex: 0,
+            }}>
             {flowStep == DriverFlowStep.Online && <Stack>
                 <Typography
                     sx={{
@@ -651,13 +636,14 @@ export default function DriverPage() {
                     </Typography>
                 </Stack>
             </Stack>}
-        </BottomSheet>
+        </Stack>
         {flowStep != DriverFlowStep.OrderPreview && 
          flowStep != DriverFlowStep.GoingToPickup &&
             <WebAppMainButton
                 disable={mainButtonDisabled()}
                 text={mainButtonCaption()}
-                onClick={onMainClick} />}
+                onClick={onMainClick} 
+            />}
         <DebugPanel 
             isVisible={false}
             debug={window.debugInfo}

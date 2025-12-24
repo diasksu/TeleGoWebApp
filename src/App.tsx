@@ -7,7 +7,8 @@ import { useSearchParams } from 'react-router-dom';
 import { locales } from './common/localization/locales';
 import { Layout } from './Layout';
 import type { PaletteMode } from '@mui/material/styles';
-import { useWebAppTheme } from '@kloktunov/react-telegram-webapp';
+import { useIsWebAppReady, useTelegramWebApp, useWebAppTheme } from '@kloktunov/react-telegram-webapp';
+import { useEffect } from 'react';
 
 interface ThemeParams {
   bg_color: `#${string}`;
@@ -81,6 +82,14 @@ export default function App() {
   locales.setLanguage(languageCode);
 
   const theme = createTakeMeTheme(colorScheme, themeParams ?? {});
+  const isReady = useIsWebAppReady();
+  const webApp = useTelegramWebApp();
+
+  useEffect(() => {
+      webApp?.ready();
+      webApp?.expand();
+      window.Telegram?.WebApp?.LocationManager?.init();
+  }, [webApp]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -89,7 +98,7 @@ export default function App() {
         adapterLocale={locales.datePickerLanguage}>
         <CssBaseline />
         <Layout>
-          <AppRoutes />
+          {isReady ? <AppRoutes /> : <></>}
         </Layout>
       </LocalizationProvider>
     </ThemeProvider>

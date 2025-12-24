@@ -1,11 +1,10 @@
-import { Button, Stack } from '@mui/material';
+import { Stack } from '@mui/material';
 import '../../assets/css/takeme.css';
-import { useTelegramWebApp } from '@kloktunov/react-telegram-webapp';
+import { useTelegramWebApp, WebAppMainButton } from '@kloktunov/react-telegram-webapp';
 import { useCallback, useEffect, useState } from 'react';
 import { BottomSheet } from 'react-spring-bottom-sheet';
 import 'react-spring-bottom-sheet/dist/style.css';
 import { getPlaceFromCoords } from '../../api/googleMapsApi';
-// import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppMainButton';
 import { locales } from '../../common/localization/locales';
 import { toPlaceDto } from '../../common/utils/addressHelpers';
 import DefiningRouteSheet from './sheets/DefiningRouteSheet';
@@ -129,12 +128,6 @@ export default function RiderPage() {
     const { getCurrentLocation } = useCurrentLocation();
 
     useEffect(() => {
-        webApp?.ready();
-        webApp?.expand();
-        window.Telegram?.WebApp?.LocationManager?.init();
-    }, [webApp]);
-
-    useEffect(() => {
         async function createProfile() {
             await apiClient.post<void>("/api/me/passenger");
         }
@@ -218,31 +211,15 @@ export default function RiderPage() {
                     {flowStep == RiderFlowStep.RideInProgress && activeRide && (
                         <RideInProgressSheet ride={activeRide} />
                     )}
-                    <Button
-                        disabled={!(origin && destination)}
-                        variant="contained"
-                        onClick={onMainClick}
-                        sx={{
-                            margin: '15px',
-                            backgroundColor: "var(--tg-theme-button-color)",
-                            color: "var(--tg-theme-button-text-color)",
-                            "&:hover": {
-                                backgroundColor: "var(--tg-theme-button-color)",
-                                opacity: 0.9,
-                            },
-                        }}
-                        >
-                        {mainButtonCaption()}
-                    </Button>
                 </Stack>
             </BottomSheet>
 
-            {/* {!pointsDialogOpen && 
-                <CustomWebAppMainButton
+            {!pointsDialogOpen && 
+                <WebAppMainButton
                     disable={!(origin && destination)}
                     text={mainButtonCaption()}
                     onClick={onMainClick} />
-            } */}
+            }
             <DebugPanel 
                 isVisible={false} />
         </Stack>

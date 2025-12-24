@@ -8,7 +8,7 @@ import {
     Typography, 
 } from '@mui/material';
 import '../../assets/css/takeme.css';
-import { useTelegramWebApp } from '@kloktunov/react-telegram-webapp';
+import { useTelegramWebApp, WebAppMainButton } from '@kloktunov/react-telegram-webapp';
 import { GoogleMap, LoadScript } from '@react-google-maps/api';
 import { useEffect, useRef, useState } from 'react';
 import RouteIcon from '../../assets/icons/RouteIcon';
@@ -16,7 +16,6 @@ import { BottomSheet } from 'react-spring-bottom-sheet';
 import { env } from '../../env/config';
 import { useCurrentLocation } from '../rider/hooks/useCurrentLocation';
 import { useApiErrorHandler } from '../../common/hooks/useApiErrorHandler';
-import CustomWebAppMainButton from '../../common/components/WebApp/CustomWebAppMainButton';
 import { locales } from '../../common/localization/locales';
 import { apiClient } from '../../api/backend';
 import { useTracking } from '../../common/hooks/useTracking';
@@ -655,7 +654,7 @@ export default function DriverPage() {
         </BottomSheet>
         {flowStep != DriverFlowStep.OrderPreview && 
          flowStep != DriverFlowStep.GoingToPickup &&
-            <CustomWebAppMainButton
+            <WebAppMainButton
                 disable={mainButtonDisabled()}
                 text={mainButtonCaption()}
                 onClick={onMainClick} />}

@@ -2,8 +2,8 @@ import { LinearProgress, Stack, Typography } from "@mui/material";
 import { getAddressOutput } from "../../../common/utils/addressHelpers";
 
 interface WaitingForDriverSheetProps {
-    origin?: google.maps.places.PlaceResult;
-    destination?: google.maps.places.PlaceResult;
+    readonly origin?: google.maps.places.PlaceResult;
+    readonly destination?: google.maps.places.PlaceResult;
 }
 
 export default function WaitingForDriverSheet({ 

@@ -13,18 +13,20 @@ import SelectPlaceSegment from "../components/SelectPlaceSegment";
 import { WebAppBackButton } from "@kloktunov/react-telegram-webapp";
 import { useNavigate } from "react-router-dom";
 import { useState, type Dispatch, type SetStateAction } from "react";
+import type { OfferPriceDto } from "../../../common/types";
+import { getFormatted } from "../../../common/utils/priceHelpers";
 
 interface DefiningRouteSheetProps {
-    tariffState?: TariffState | null;
-    map?: google.maps.Map | null;
-    origin?: google.maps.places.PlaceResult;
-    destination?: google.maps.places.PlaceResult;
-    setOrigin?: (origin: google.maps.places.PlaceResult) => void;
-    setDestination?: (destination: google.maps.places.PlaceResult) => void;
-    pointsDialogOpen: boolean;
-    setPointsDialogOpen: (open: boolean) => void;
-    adjustment: number;
-    setAdjustment: Dispatch<SetStateAction<number>>;
+    readonly tariffState?: TariffState | null;
+    readonly map?: google.maps.Map | null;
+    readonly origin?: google.maps.places.PlaceResult;
+    readonly destination?: google.maps.places.PlaceResult;
+    readonly setOrigin?: (origin: google.maps.places.PlaceResult) => void;
+    readonly setDestination?: (destination: google.maps.places.PlaceResult) => void;
+    readonly pointsDialogOpen: boolean;
+    readonly setPointsDialogOpen: (open: boolean) => void;
+    readonly adjustment: number;
+    readonly setAdjustment: Dispatch<SetStateAction<number>>;
 }
 
 export default function DefiningRouteSheet({ 
@@ -72,11 +74,14 @@ export default function DefiningRouteSheet({
             return next;
         });
     }
-    const formattedPrice = estimation ? 
-        (estimation.currency_symbol_position === 'before' 
-            ? `${estimation.currency_symbol}${estimation.amount + adjustment}` 
-            : `${estimation.amount + adjustment}${estimation.currency_symbol}`) 
-        : '';
+
+    const offerPrice : OfferPriceDto | null = estimation ? 
+    {
+        amount: estimation.amount + adjustment,
+        currency_symbol: estimation.currency_symbol,
+        currency_symbol_position: estimation.currency_symbol_position,
+    } :
+    null;
 
     return <>
         <Stack
@@ -133,7 +138,7 @@ export default function DefiningRouteSheet({
             </Typography>
         )}
 
-        {estimation?.formatted && (
+        {offerPrice && (
             <Stack
                 alignItems={"center"}
                 justifyContent="center"
@@ -159,7 +164,7 @@ export default function DefiningRouteSheet({
                         textAlign: "center",
                         padding: '15px'
                     }}>
-                    {formattedPrice}
+                    {getFormatted(offerPrice)}
                 </Typography>
                 <IconButton
                     size="small"

@@ -1,7 +1,7 @@
 import { Stack, Typography } from "@mui/material";
 
 interface DriverArrivedSheetProps {
-    rideCode: number;
+    readonly rideCode: number;
 }
 
 export default function DriverArrivedSheet({ 

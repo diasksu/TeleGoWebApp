@@ -1,66 +1,46 @@
 import { 
-    Box,
-    Button,
-    IconButton,
     LinearProgress,
     Stack,
-    TextField,
     Typography, 
 } from '@mui/material';
 import '../../assets/css/takeme.css';
 import { useTelegramWebApp, WebAppMainButton } from '@kloktunov/react-telegram-webapp';
-import { GoogleMap, LoadScript } from '@react-google-maps/api';
-import { useEffect, useRef, useState } from 'react';
-import RouteIcon from '../../assets/icons/RouteIcon';
-import { env } from '../../env/config';
+import { useEffect, useState } from 'react';
 import { useCurrentLocation } from '../rider/hooks/useCurrentLocation';
 import { useApiErrorHandler } from '../../common/hooks/useApiErrorHandler';
 import { locales } from '../../common/localization/locales';
 import { apiClient } from '../../api/backend';
 import { useTracking } from '../../common/hooks/useTracking';
-import { DriverFlowStep, type DriverOfferFullDto, type DriverRideSnapshotDto, type PostDriverPositionDto, type PostDriverStateDto } from './types';
+import { 
+    DriverFlowStep,
+    type DriverOfferFullDto,
+    type DriverRideSnapshotDto,
+    type PostDriverPositionDto,
+    type PostDriverStateDto
+} from './types';
 import { useInterval } from '../../common/hooks/useInterval';
 import DebugPanel from '../../common/components/DebugPanel';
 import { RideStatus } from '../rider/types';
-
-const libraries: ("places" | "marker")[] = ["places", "marker"];
-
-const mapStyle: google.maps.MapTypeStyle[] = [
-    {"featureType": "administrative", "elementType": "labels", "stylers": [{"color": "#FFFFFF"}, {"visibility": "simplified"}]},
-    {"featureType": "landscape.man_made", "elementType": "all", "stylers": [{"visibility": "simplified"}, {"color": "#303030"}]},
-    {"featureType": "landscape.natural", "elementType": "geometry", "stylers": [{"color": "#000000"}, {"visibility": "simplified"}]},
-    {"featureType": "poi", "elementType": "geometry", "stylers": [{"visibility": "off"}]},
-    {"featureType": "poi", "elementType": "labels.text", "stylers": [{"visibility": "simplified"}, {"color": "#FFFFFF"}]},
-    {"featureType": "road", "elementType": "geometry", "stylers": [{"visibility": "simplified"}, {"color": "#808080"}]},
-    {"featureType": "road", "elementType": "labels.text", "stylers": [{"color": "#FFFFFF"}, {"visibility": "simplified"}]},
-    {"featureType": "road", "elementType": "labels.icon", "stylers": [{"visibility": "off"}]},
-    {"featureType": "water", "elementType": "all", "stylers": [{"color": "#303030"}]}
-];
-
-const onMapButtonClick = () => { }
+import OrderPreviewSheet from './sheets/OrderPreviewSheet';
+import GoingToPickupSheet from './sheets/GoingToPickupSheet';
+import ArrivedAtPickupSheet from './sheets/ArrivedAtPickupSheet';
+import RideInProgressSheet from './sheets/RideInProgressSheet';
+import RideCompletedSheet from './sheets/RideCompletedSheet';
+import DriverMap from './components/DriverMap';
 
 export default function DriverPage() {
     const webApp = useTelegramWebApp();
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [currentLocation, setCurrentLocation] = useState<google.maps.LatLngLiteral | null>(null);
-    const [initialMarker, setInitialMarker] = useState<google.maps.Marker | null>(null);
     const [offer, setOffer] = useState<DriverOfferFullDto | null>(null);
     const [rideId, setRideId] = useState<string | null>(null);
-    const rideRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
-    const pickupRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
     const [pickupCode, setPickupCode] = useState(Number);
 
     const { getCurrentLocation } = useCurrentLocation();
     const { position, startTracking, stopTracking } = useTracking();
     const handleApiError = useApiErrorHandler();
     const [flowStep, setFlowStep] = useState(DriverFlowStep.Offline);
-
-    useEffect(() => {
-        webApp?.ready();
-        webApp?.expand();
-        window.Telegram?.WebApp?.LocationManager?.init();
-    }, [webApp]);
 
     useEffect(() => {
         async function createProfile() {
@@ -90,91 +70,6 @@ export default function DriverPage() {
     }, [map, getCurrentLocation, handleApiError]);
 
     useEffect(() => {
-        if (!map) return;
-        if (currentLocation) {
-            if(flowStep == DriverFlowStep.Online || 
-                flowStep == DriverFlowStep.Offline || 
-                flowStep == DriverFlowStep.GoingToPickup || 
-                flowStep == DriverFlowStep.RideInProgress) {
-                map.panTo(currentLocation);
-                map.setZoom(16);
-            }
-            if (!initialMarker) {
-                const marker = new google.maps.Marker({ map, position: currentLocation, label: 'ME' });
-                setInitialMarker(marker);
-            } else {
-                initialMarker.setPosition(currentLocation);
-            }
-        }
-        else {
-            if (initialMarker) {
-                initialMarker.setMap(null);
-                setInitialMarker(null);
-            }
-        }
-    }, [map, currentLocation, flowStep]);
-
-    useEffect(() => {
-        if (flowStep !== DriverFlowStep.GoingToPickup) {
-            if (pickupRendererRef.current) {
-                pickupRendererRef.current.setMap(null);
-                pickupRendererRef.current = null;
-            }
-            return;
-        } 
-        if (!offer) return;
-        if (!map) return;
-        if (!currentLocation) return;
-        const destination = {
-            lat: offer.origin.latitude,
-            lng: offer.origin.longitude
-        };
-        if (pickupRendererRef.current) {
-            pickupRendererRef.current.setMap(null);
-            pickupRendererRef.current = null;
-        }
-        const renderer = new google.maps.DirectionsRenderer({ 
-                map, 
-                suppressMarkers: true,
-                polylineOptions: {
-                    strokeColor: "#00C853",    
-                    strokeWeight: 6,   
-                    strokeOpacity: 0.5               
-                }
-            });
-        pickupRendererRef.current = renderer;
-        const svc = new google.maps.DirectionsService();
-        svc.route(
-            {
-                origin: currentLocation,
-                destination,
-                travelMode: google.maps.TravelMode.DRIVING
-            },
-            (result, status) => {
-                if (status === 'OK' && result) {
-                    const latlngs = result.routes[0].overview_path.map(p => ({
-                        latitude: p.lat(),
-                        longitude: p.lng()
-                    }));
-
-                    window.dispatchEvent(new CustomEvent("geosim:setRoute", {
-                        detail: { route: latlngs }
-                    }));
-
-                    setTimeout(() => {
-                        window.dispatchEvent(new Event("geosim:start"));
-                    }, 3000);
-
-                    renderer.setDirections(result);
-                } else {
-                    console.error('Directions request failed:', status);
-                }
-            }
-        );
-        return () => renderer.setMap(null);
-    }, [flowStep]);
-
-    useEffect(() => {
         if (flowStep !== DriverFlowStep.Online) return;
         let cancelled = false;
         const interval = setInterval(async () => {
@@ -197,41 +92,6 @@ export default function DriverPage() {
     }, [flowStep]);
 
     useEffect(() => {
-        if (!offer) return;
-        if (!map) return;
-        const origin = {
-            lat: offer.origin.latitude,
-            lng: offer.origin.longitude
-        };
-        const destination = {
-            lat: offer.destination.latitude,
-            lng: offer.destination.longitude
-        };
-        if (rideRendererRef.current) {
-            rideRendererRef.current.setMap(null);
-            rideRendererRef.current = null;
-        }
-        const renderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: true });
-        rideRendererRef.current = renderer;
-        const svc = new google.maps.DirectionsService();
-        svc.route(
-            {
-                origin,
-                destination,
-                travelMode: google.maps.TravelMode.DRIVING
-            },
-            (result, status) => {
-                if (status === 'OK' && result) {
-                    renderer.setDirections(result);
-                } else {
-                    console.error('Directions request failed:', status);
-                }
-            }
-        );
-        return () => renderer.setMap(null);
-    }, [offer, map])
-
-    useEffect(() => {
         if (!position) return;
         updateDriverPosition(position);
     }, [position]);
@@ -250,17 +110,6 @@ export default function DriverPage() {
                 await goOffline();
                 break;
             case DriverFlowStep.ArrivedAtPickup: {
-                const result = rideRendererRef.current?.getDirections();
-                const latlngs = result?.routes[0].overview_path.map(p => ({
-                    latitude: p.lat(),
-                    longitude: p.lng()
-                }));
-                window.dispatchEvent(new CustomEvent("geosim:setRoute", {
-                    detail: { route: latlngs }
-                }));
-                setTimeout(() => {
-                    window.dispatchEvent(new Event("geosim:start"));
-                }, 3000);
                 try {
                     await apiClient.post("/api/me/driver/ride/start", {
                         ride_id: rideId,
@@ -275,7 +124,6 @@ export default function DriverPage() {
                     }
                     webApp?.showAlert("Ошибка. Попробуйте ещё раз");
                 }
-                setFlowStep(DriverFlowStep.RideInProgress);
                 break;
             }
             case DriverFlowStep.RideInProgress:
@@ -286,6 +134,10 @@ export default function DriverPage() {
                 await goOnline();
                 break;
         }
+    }
+
+    const webAppAlert = (message: string) => {
+        webApp?.showAlert(message);
     }
 
     const goOnline = async () => {
@@ -383,54 +235,24 @@ export default function DriverPage() {
         }
     }
 
-    // todo: format price utility, move to common, move offer price dto to common
-    const formattedPrice = offer?.price.currency_symbol_position === 'before' ? 
-        `${offer?.price.currency_symbol}${offer?.price.amount}` : 
-        `${offer?.price.amount}${offer?.price.currency_symbol}`;
+    const originLocation = offer ? {
+        lat: offer.origin.latitude,
+        lng: offer.origin.longitude
+    } : null;
+
+    const destinationLocation = offer ? {
+        lat: offer.destination.latitude,
+        lng: offer.destination.longitude
+    } : null;
  
     return <Stack sx={{ height: "100vh", position: "relative" }}>
-        <LoadScript
-            googleMapsApiKey={env.googleMapsApiKey}
-            libraries={libraries}>
-            <GoogleMap
-                    mapContainerStyle={{ 
-                        width: "100%", 
-                        height: "100vh"
-                    }}
-                    zoom={13}
-                    onLoad={(map) => {
-                        map.setOptions({
-                            styles: mapStyle,
-                            disableDefaultUI: true,
-                            mapTypeControl: false,
-                        });
-                        return setMap(map);
-                    }}
-                    options={{
-                        // mapId: "8a5f0c4d3a9b1234"
-                    }}
-                >
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        bottom: '30px',
-                        right: '15px'
-                    }}
-                >
-                    <IconButton
-                        sx={{
-                            backgroundColor: 'rgba(0,0,0,0.4)',
-                            width: 40,
-                            height: 40,
-                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.8)' }
-                        }}
-                        onClick={onMapButtonClick}
-                    >
-                        <RouteIcon sx={{ fontSize: 24, color: '#e3e3e3' }} />
-                    </IconButton>
-                </Box>   
-            </GoogleMap>
-        </LoadScript>
+        <DriverMap
+            setMainMap={setMap}
+            flowStep={flowStep}
+            currentLocation={currentLocation}
+            originLocation={originLocation}
+            destinationLocation={destinationLocation}
+        />
         <Stack
             sx={{
                 borderTopLeftRadius: '15px',
@@ -456,186 +278,24 @@ export default function DriverPage() {
                         },
                     }} />
             </Stack>}
-            {flowStep == DriverFlowStep.OrderPreview && <Stack>
-                <Typography
-                    sx={{
-                        fontSize: 20,
-                        fontWeight: 'bold',
-                        textAlign: "center",
-                        padding: '15px',
-                    }}>
-                    You have a new ride offer!
-                </Typography>
-                <Stack sx={{ padding: '0 15px 15px 15px' }}>
-                    <Typography>
-                        Passenger: {offer?.passenger_name}
-                    </Typography>
-                    <Typography>
-                        Distance to pickup: {(offer?.distance_meters ?? 0) / 1000} km
-                    </Typography>
-                    <Typography>
-                        From: {offer?.origin.short_name}
-                    </Typography>
-                    <Typography>
-                        To: {offer?.destination.short_name}
-                    </Typography>
-                    <Typography>
-                        Price: {formattedPrice}
-                    </Typography>
-                </Stack>
-                <Stack 
-                    direction="row"
-                    spacing={1}
-                    sx={{ 
-                        width: "100%", 
-                        padding: '10px'
-                    }}>
-                    <Button sx={{ 
-                            flex: 1,
-                            backgroundColor: "var(--tg-theme-button-color)",
-                            color: "var(--tg-theme-button-text-color)",
-                            "&:hover": {
-                                opacity: 0.92
-                            }
-                        }}
-                        onClick={acceptOffer}>
-                        Принять
-                    </Button>
-                    <Button sx={{ 
-                            flex: 1,
-                            backgroundColor: "var(--tg-theme-secondary-bg-color)",
-                            color: "var(--tg-theme-destructive-text-color)",
-                            "&:hover": {
-                                opacity: 0.92
-                            }
-                        }}
-                        onClick={declineOffer}>
-                        Отклонить
-                    </Button>
-                </Stack>
-            </Stack>}
-            {flowStep == DriverFlowStep.GoingToPickup && <Stack>
-                <Typography
-                    sx={{
-                        fontSize: 20,
-                        fontWeight: 'bold',
-                        textAlign: "center",
-                        padding: '15px',
-                    }}>
-                    Heading to pickup location...
-                </Typography>
-            </Stack>}
-            {flowStep == DriverFlowStep.ArrivedAtPickup && <Stack>
-                <Typography
-                    sx={{
-                        fontSize: 20,
-                        fontWeight: 'bold',
-                        textAlign: "center",
-                        padding: '15px',
-                    }}>
-                    You have arrived at the pickup location.
-                </Typography>
-                <Stack sx={{ padding: '0 15px 15px 15px' }}>
-                    <Typography>
-                        Passenger: {offer?.passenger_name}
-                    </Typography>
-                    <Typography>
-                        From: {offer?.origin.short_name}
-                    </Typography>
-                    <Typography>
-                        To: {offer?.destination.short_name}
-                    </Typography>
-                     <Stack spacing={1} sx={{ mt: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Если по какой-то причине вы не смогли связаться с пассажиром,
-                        вы можете отменить поездку.
-                    </Typography>
-                    <Typography
-                        variant="body1"
-                        sx={{
-                            textDecoration: 'underline',
-                            color: '#3876F0',
-                            cursor: 'pointer',
-                            fontWeight: 500
-                        }}
-                        onClick={() => {webApp?.showAlert("Поездка отменена")}} 
-                    >
-                        Отменить поездку
-                    </Typography>
-                    <Stack
-                        spacing={1}
-                        direction="row"
-                        alignItems="center"
-                    >
-                        <Typography variant="body2" color="text.secondary">
-                            Код посадки:
-                        </Typography>
-                        <TextField
-                            onChange={(e) => setPickupCode(Number(e.target.value))}
-                            variant="outlined"
-                            size="small"
-                            slotProps={{
-                                htmlInput: {
-                                    inputMode: 'numeric',
-                                    maxLength: 4,
-                                    minLength: 4
-                                }
-                            }}
-                        />
-                    </Stack>
-                </Stack>
-                </Stack>
-            </Stack>}
-            {flowStep == DriverFlowStep.RideInProgress && <Stack>
-                <Typography
-                    sx={{
-                        fontSize: 20,
-                        fontWeight: 'bold',
-                        textAlign: "center",
-                        padding: '15px',
-                    }}>
-                    Ride in progress...
-                </Typography>
-                <Stack sx={{ padding: '0 15px 15px 15px' }}>
-                    <Typography>
-                        Passenger: {offer?.passenger_name}
-                    </Typography>
-                    <Typography>
-                        From: {offer?.origin.short_name}
-                    </Typography>
-                    <Typography>
-                        To: {offer?.destination.short_name}
-                    </Typography>
-                </Stack>
-            </Stack>}
-            {flowStep == DriverFlowStep.RideCompleted && <Stack>
-                <Typography
-                    sx={{
-                        fontSize: 20,
-                        fontWeight: 'bold',
-                        textAlign: "center",
-                        padding: '15px',
-                    }}>
-                    You have completed the ride.
-                </Typography>
-                <Stack sx={{ padding: '0 15px 15px 15px' }}>
-                    <Typography variant="body2" color="text.secondary">
-                        Если вы хотите, можете остаться в оффлайн.
-                    </Typography>
-                    <Typography
-                        variant="body1"
-                        sx={{
-                            textDecoration: 'underline',
-                            color: '#3876F0',
-                            cursor: 'pointer',
-                            fontWeight: 500
-                        }}
-                        onClick={goOffline} 
-                    >
-                        Оставаться в оффлайн
-                    </Typography>
-                </Stack>
-            </Stack>}
+            {flowStep == DriverFlowStep.OrderPreview && offer && (
+                <OrderPreviewSheet offer={offer} acceptOffer={acceptOffer} declineOffer={declineOffer} />
+            )}
+            {flowStep == DriverFlowStep.GoingToPickup && (
+                <GoingToPickupSheet />
+            )}
+            {flowStep == DriverFlowStep.ArrivedAtPickup && offer && (
+                <ArrivedAtPickupSheet 
+                    offer={offer}
+                    setPickupCode={setPickupCode}
+                    webAppAlert={webAppAlert} />
+            )}
+            {flowStep == DriverFlowStep.RideInProgress && offer && (
+                <RideInProgressSheet offer={offer} />
+            )}
+            {flowStep == DriverFlowStep.RideCompleted && (
+                <RideCompletedSheet goOffline={goOffline} />
+            )}
         </Stack>
         {flowStep != DriverFlowStep.OrderPreview && 
          flowStep != DriverFlowStep.GoingToPickup &&

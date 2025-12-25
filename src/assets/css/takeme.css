@@ -37,37 +37,6 @@
     --tg-skeleton-color: var(--color-bg-tertiary);
 	--tg-section-bg-color: var(--tg-theme-section-bg-color, #17212b);
 }
-
-:root {
-	--rsbs-backdrop-bg: rgba(0, 0, 0, 0.6);
-	--rsbs-bg: #17212b;
-	/* --rsbs-bg: transparent; */
-	--rsbs-handle-bg: gray;
-	--rsbs-max-w: auto;
-	--rsbs-ml: env(safe-area-inset-left);
-	--rsbs-mr: env(safe-area-inset-right);
-	--rsbs-overlay-rounded: 0px !important;
-}
-
-@keyframes handle-bounce {
-  0%, 100% {
-    transform: translateY(-15);
-  }
-  50% {
-    transform: translateY(-25px);
-  }
-}
-
-[data-rsbs-header] {
-	padding: 0px !important;
-	transform: translateY(-20px);
-	animation: handle-bounce 1.5s ease-in-out infinite;
-}
-
-[data-rsbs-is-blocking='false'] [data-rsbs-overlay] {
-    box-shadow: 0 -14px 8px -10px rgba(0, 0, 0, 0.35) !important;
-}
-
 .take-logo g {
 	fill: var(--tg-color-bg-button);
 }

@@ -2,7 +2,7 @@ import { Stack, Typography } from "@mui/material";
 import type { PassengerActiveRideProjection } from "../types";
 
 interface DriverEnRouteSheetProps {
-    ride: PassengerActiveRideProjection;
+    readonly ride: PassengerActiveRideProjection;
 }
 
 export default function DriverEnRouteSheet({ 

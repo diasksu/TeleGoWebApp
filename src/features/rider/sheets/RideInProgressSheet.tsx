@@ -1,18 +1,15 @@
 import { Stack, Typography } from "@mui/material";
 import type { PassengerActiveRideProjection } from "../types";
+import { getFormatted } from "../../../common/utils/priceHelpers";
 
 interface RideInProgressSheetProps {
-    ride: PassengerActiveRideProjection;
+    readonly ride: PassengerActiveRideProjection;
 }
 
 export default function RideInProgressSheet({ 
     ride
 }: RideInProgressSheetProps) 
 {
-    const price = ride.offer_price;
-    const formattedPrice = price?.currency_symbol_position === 'before' ? 
-        `${price?.currency_symbol}${price?.amount}` : 
-        `${price?.amount}${price?.currency_symbol}`;
     return <Stack>
         <Typography
             sx={{
@@ -29,7 +26,7 @@ export default function RideInProgressSheet({
                 textAlign: "center",
                 padding: '0 15px 15px 15px',
             }}>
-            Fare: {formattedPrice}
+            Fare: {getFormatted(ride.offer_price)}
             <br />
             Please pay the driver directly after the trip.
             <br />

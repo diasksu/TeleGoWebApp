@@ -1,3 +1,4 @@
+import type { OfferPriceDto } from "../../common/types";
 import type { PlaceDto } from "../../common/utils/addressHelpers";
 
 export interface RideRequestRequest {
@@ -62,12 +63,6 @@ export interface PassengerActiveRideProjection {
     driver_state: PassengerDriverStateDto;
     offer_price: OfferPriceDto;
 }
-
-export type OfferPriceDto = {
-    amount: number;
-    currency_symbol: string;
-    currency_symbol_position: 'before' | 'after';
-};
 
 export interface PassengerRideDto {
     id: string;           

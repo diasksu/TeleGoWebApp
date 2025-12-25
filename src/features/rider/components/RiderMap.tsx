@@ -7,15 +7,15 @@ import { RiderFlowStep } from "../types";
 import HailingIcon from "../../../assets/icons/HailingIcon";
 
 interface RiderMapProps {
-    origin?: google.maps.places.PlaceResult;
-    destination?: google.maps.places.PlaceResult;
-    driverPosition: google.maps.LatLngLiteral | null;
-    onRouteRendered?: (
+    readonly origin?: google.maps.places.PlaceResult;
+    readonly destination?: google.maps.places.PlaceResult;
+    readonly driverPosition: google.maps.LatLngLiteral | null;
+    readonly onRouteRendered?: (
         origin: google.maps.places.PlaceResult,
         destination: google.maps.places.PlaceResult
     ) => void
-    setMainMap?: (map: google.maps.Map) => void;
-    flowStep: RiderFlowStep;
+    readonly setMainMap?: (map: google.maps.Map) => void;
+    readonly flowStep: RiderFlowStep;
 }
 
 const libraries: ("places" | "marker" | "geometry")[] = ["places", "marker", "geometry"];
@@ -136,7 +136,7 @@ export default function RiderMap({
             }
         );
         return () => renderer.setMap(null);
-    }, [map, origin, destination]); // ВАЖНО: без onRouteRendered
+    }, [map, origin, destination]); // Important! without onRouteRendered
 
     const onMapButtonClick = () => { 
         if (!map || !origin) return;

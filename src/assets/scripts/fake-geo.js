@@ -68,29 +68,50 @@ window.addEventListener("geosim:stop", () => {
 // -------------------------
 // Override getCurrentPosition
 // -------------------------
-const startLatitude = Math.random() * (36.920 - 36.900) + 36.904;;
-const startLongitude = Math.random() * (30.740 - 30.700) + 30.715;
-navigator.geolocation.getCurrentPosition = function (success) {
-  if (!route.length) {
+// ~1 km in degrees
+const MAX_OFFSET_METERS = 1000;
+const METERS_IN_DEGREE = 111_320;
+
+function randomOffset() {
+  return (Math.random() * 2 - 1) * (MAX_OFFSET_METERS / METERS_IN_DEGREE);
+}
+
+const originalGetCurrentPosition = navigator.geolocation.getCurrentPosition.bind(
+  navigator.geolocation
+);
+
+let startLatitude;
+let startLongitude;
+
+originalGetCurrentPosition((pos) => {
+  const baseLat = pos.coords.latitude;
+  const baseLng = pos.coords.longitude;
+
+  startLatitude = baseLat + randomOffset();
+  startLongitude = baseLng + randomOffset() / Math.cos((baseLat * Math.PI) / 180);
+
+  navigator.geolocation.getCurrentPosition = function (success) {
+    if (!route.length) {
+      success({
+        coords: {
+          latitude: startLatitude,
+          longitude: startLongitude,
+          accuracy: 5
+        }
+      });
+      return;
+    }
+
+    const p = route[idx];
     success({
       coords: {
-        latitude: startLatitude,
-        longitude: startLongitude,
+        latitude: p.latitude,
+        longitude: p.longitude,
         accuracy: 5
       }
     });
-    return;
-  }
-
-  const p = route[idx];
-  success({
-    coords: {
-      latitude: p.latitude,
-      longitude: p.longitude,
-      accuracy: 5
-    }
-  });
-};
+  };
+});
 
 // -------------------------
 // Override watchPosition

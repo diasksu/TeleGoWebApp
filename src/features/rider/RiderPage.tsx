@@ -139,22 +139,15 @@ export default function RiderPage() {
         if (!map) return;
         let cancelled = false;
         (async () => {
-            try {
-                const loc = await getCurrentLocation();
-                if (cancelled || !loc) return;
-                if (!window.google?.maps?.Geocoder) {
-                    console.warn('Google Maps API not ready yet');
-                    return;
-                }
-                const place = await getPlaceFromCoords(loc);
-                if (!cancelled && place) setOrigin(place);
-            } 
-            catch (e) {
-                handleApiError(e, 'Не удалось определить стартовую точку');
+            const loc = await getCurrentLocation();
+            if (!loc || cancelled) return;
+            const place = await getPlaceFromCoords(loc);
+            if (!cancelled && place) {
+                setOrigin(place);
             }
         })();
         return () => { cancelled = true; };
-    }, [map, getCurrentLocation, handleApiError]);
+    }, [map, getCurrentLocation]);
 
     return (
         <Stack sx={{ height: "100vh", position: "relative" }}>
@@ -204,7 +197,8 @@ export default function RiderPage() {
                     onClick={onMainClick} />
             }
             <DebugPanel 
-                isVisible={false} />
+                isVisible={false}
+                />
         </Stack>
     );
 }

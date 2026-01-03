@@ -1,7 +1,5 @@
 import { useCallback } from 'react';
 
-const center = { lat: 36.910894, lng: 30.720875 };
-
 /**
  * Hook to get the user's current location.
  * It first tries to use Telegram's LocationManager,
@@ -9,37 +7,41 @@ const center = { lat: 36.910894, lng: 30.720875 };
  */
 export function useCurrentLocation() {
     const getCurrentLocation = useCallback(async (): Promise<google.maps.LatLngLiteral | null> => {
-        return new Promise<google.maps.LatLngLiteral | null>((resolve) => {
-            // const locationManager = window.Telegram?.WebApp?.LocationManager;
-            
-            // // First try to use Telegram LocationManager
-            // if (locationManager?.isLocationAvailable) {
-            //     locationManager.getLocation((location: LocationData | null) => {
-            //         if (location) {
-            //             resolve({ lat: location.latitude, lng: location.longitude });
-            //         } else {
-            //             resolve(center);
-            //         }
-            //     });
-            //     return;
-            // }
-            
-            // Fallback to standard geolocation API
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }), 
-                    error => { 
-                        console.error("Geolocation error:", error);
-                        resolve(center); 
-                    }, 
-                    { enableHighAccuracy: true, timeout: 300 }
-                ); 
-                return; 
+
+        // // First try to use Telegram LocationManager
+        // const locationManager = window.Telegram?.WebApp?.LocationManager;
+        // if (locationManager?.isLocationAvailable) {
+        //     locationManager.getLocation((location: LocationData | null) => {
+        //         if (location) {
+        //             resolve({ lat: location.latitude, lng: location.longitude });
+        //         } else {
+        //             resolve(center);
+        //         }
+        //     });
+        //     return;
+        // }
+
+        // Fallback to standard geolocation API
+        if (!navigator.geolocation) return null;
+        try {
+            const permission = await navigator.permissions.query({ name: 'geolocation' });
+            if (permission.state === 'denied') {
+                return null;
             }
-            
-            // If nothing is available
-            resolve(center);            
-        });
+            return new Promise(resolve => {
+                navigator.geolocation.getCurrentPosition(
+                    pos => resolve({
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                    }),
+                    () => resolve(null),
+                    { enableHighAccuracy: true }
+                );
+            });
+        } catch {
+            return null;
+        }
+
     }, []);
 
     return { getCurrentLocation };

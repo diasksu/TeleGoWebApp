@@ -58,7 +58,7 @@ export default function RiderMap({
         if (!map) return;
         if (!origin?.geometry?.location) return;
         if (destination?.geometry?.location) {
-            // есть destination — маркер не нужен
+            // if destination defined — no need in initial marker
             if (initialMarker) {
                 initialMarker.setMap(null);
                 setInitialMarker(null);

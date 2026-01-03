@@ -88,7 +88,7 @@ export default function App() {
   useEffect(() => {
       webApp?.ready();
       webApp?.expand();
-      window.Telegram?.WebApp?.LocationManager?.init();
+      // window.Telegram?.WebApp?.LocationManager?.init();
   }, [webApp]);
 
   return (
